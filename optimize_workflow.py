@@ -5,14 +5,15 @@ Org → Research → Org → Coding → Feedback
 """
 import json
 import os
+import asyncio
 import time
 from datetime import datetime, timedelta
 from telegram import Bot
 from telegram.error import TelegramError
 
 # Configuration
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "your_token_here")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "149263552")
 LOG_FILE = "agent_logs.json"
 TASKS_FILE = "agent_tasks.json"
 IMPROVEMENTS_FILE = "improvements.json"
@@ -111,29 +112,30 @@ async def notify_new_feature(message: str):
     """Send feedback when new feature is live"""
     await send_telegram_message(f"🆕 <b>NEW FEATURE LIVE!</b>\n\n{message}")
 
-async def run_optimization_cycle():
+async def run_optimization_cycle(topic: str = None):
     """Run the full org → research → org → coding workflow"""
     
+    if not topic:
+        topic = "general optimization"
+    
     print("\n" + "="*50)
-    print("🔄 Starting Optimization Cycle")
+    print(f"🔄 Starting Optimization: {topic}")
     print("="*50 + "\n")
     
-    # Step 1: Org Agent identifies what to optimize
-    print("📋 Step 1: Org Agent analyzing what to optimize...")
+    # Step 1: Org Agent identifies what to work on
+    print("📋 Step 1: Org Agent analyzing task...")
     org_prompt = SYSTEM_PROMPT.format(**AGENTS["org"])
     
-    current_improvements = load_json(IMPROVEMENTS_FILE)
-    pending = [i for i in current_improvements if i.get("status") == "pending" and i.get("category") == "found"]
-    recent_logs = load_json(LOG_FILE)[-20:] if os.path.exists(LOG_FILE) else []
-    
-    org_task = f"""Analyze the tutorial website (app.py) and agent system for optimization opportunities.
+    org_task = f"""You are the Organizational Manager. Analyze this task and create an execution plan.
 
-Current pending items: {len(pending)} items
-Recent activity: {len(recent_logs)} tasks completed
+Task: {topic}
 
-Identify 1-3 specific, actionable improvements that the research agent should search for.
-Focus on things that can be implemented quickly.
-Respond with a numbered list."""
+Break this down into:
+1. What the Research Agent should find
+2. What the Developer should implement
+3. Timeline (keep it fast!)
+
+Respond with a clear plan."""
     
     org_analysis = call_ollama(org_prompt, org_task)
     print(f"📋 Org Analysis:\n{org_analysis[:500]}...")
@@ -282,12 +284,28 @@ if __name__ == "__main__":
     import sys
     
     if len(sys.argv) > 1:
-        if sys.argv[1] == "--now":
+        arg = sys.argv[1]
+        
+        if arg == "--now":
             asyncio.run(run_optimization_cycle())
-        elif sys.argv[1] == "--schedule":
+        
+        elif arg == "--topic":
+            if len(sys.argv) > 2:
+                topic = " ".join(sys.argv[2:])
+                asyncio.run(run_optimization_cycle(topic))
+            else:
+                print("Usage: --topic 'your task description'")
+        
+        elif arg == "--schedule":
             run_scheduler()
+        
+        else:
+            print("Usage:")
+            print("  python3.11 optimize_workflow.py --now                    # Run general optimization")
+            print("  python3.11 optimize_workflow.py --topic 'task'      # Run specific task")
+            print("  python3.11 optimize_workflow.py --schedule      # Run daily")
     else:
         print("Usage:")
-        print("  python3.11 optimize_workflow.py --now      # Run once")
-        print("  python3.11 optimize_workflow.py --schedule  # Run daily at 08:00")
-        print("\n⏰ For testing, run with --now first")
+        print("  python3.11 optimize_workflow.py --now                    # Run general optimization")
+        print("  python3.11 optimize_workflow.py --topic 'task'      # Run specific task")
+        print("  python3.11 optimize_workflow.py --schedule      # Run daily")
