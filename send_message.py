@@ -13,8 +13,12 @@ async def send_message(chat_id: str, text: str):
 if __name__ == "__main__":
     import sys
     
-    # Hardcoded for now
-    bot_token = "your_token_here"
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    
+    if not bot_token:
+        print("⚠️ TELEGRAM_BOT_TOKEN not set. Set it first:")
+        print("   export TELEGRAM_BOT_TOKEN='your_token'")
+        sys.exit(1)
     
     # Try different chat IDs
     chat_ids = [
