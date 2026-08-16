@@ -11,6 +11,15 @@ import os
 import json
 import sys
 
+# Load secrets from .env in the project root (before importing services
+# that read env vars at import time). .env is gitignored.
+try:
+    from dotenv import load_dotenv
+    _env_path = Path(__file__).parent.parent / ".env"
+    load_dotenv(_env_path)
+except ImportError:
+    pass
+
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
