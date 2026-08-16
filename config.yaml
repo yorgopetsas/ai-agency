@@ -1,0 +1,205 @@
+# AI Agency Configuration
+# Phase 7: UNIFY - Unified Configuration
+# =========================================
+# This file serves as the single source of truth for all configuration.
+# All modules read from here instead of hardcoding values.
+
+version: "1.0.0"
+name: "AI Agency System"
+environment: "development"  # development, staging, production
+
+# --------------------------------------------------------
+# CLIENT SETTINGS
+# --------------------------------------------------------
+client:
+  default: "internal"
+  isolation: true  # Enforce client_id on all queries
+
+# --------------------------------------------------------
+# DATABASE
+# --------------------------------------------------------
+database:
+  type: "sqlite"
+  path: "/Users/yorgopetsasedel/dev/opencode/ai_agency/data"
+  name: "multi_tenant.db"
+  pool_size: 5
+  timeout: 30
+
+# --------------------------------------------------------
+# AGENTS
+# --------------------------------------------------------
+agents:
+  team_size: 7
+  roles:
+    - name: "org"
+      display_name: "Organization Manager"
+      model: "llama3"
+      temperature: 0.2
+      max_tokens: 2048
+    - name: "research"
+      display_name: "Research Analyst"
+      model: "llama3"
+      temperature: 0.2
+      max_tokens: 4096
+    - name: "writer"
+      display_name: "Content Writer"
+      model: "llama3"
+      temperature: 0.6
+      max_tokens: 4096
+    - name: "developer"
+      display_name: "Code Developer"
+      model: "codellama"
+      temperature: 0.2
+      max_tokens: 4096
+    - name: "designer"
+      display_name: "Designer"
+      model: "llama3"
+      temperature: 0.7
+      max_tokens: 2048
+    - name: "analyst"
+      display_name: "Market Analyst"
+      model: "llama3"
+      temperature: 0.3
+      max_tokens: 4096
+    - name: "reviewer"
+      display_name: "Quality Reviewer"
+      model: "llama3"
+      temperature: 0.4
+      max_tokens: 2048
+
+# --------------------------------------------------------
+# MEMORY (Phase 2)
+# --------------------------------------------------------
+memory:
+  enabled: true
+  provider: "ollama"
+  llm:
+    model: "llama3"
+    temperature: 0.3
+  embedding:
+    model: "mxbai-embed-large"
+  vector_store:
+    provider: "chroma"
+    persist_path: "/Users/yorgopetsasedel/dev/opencode/ai_agency/knowledge"
+
+# --------------------------------------------------------
+# SKILLS (Phase 3)
+# --------------------------------------------------------
+skills:
+  enabled: true
+  sources:
+    - name: "anthropic-skills"
+      path: "/Users/yorgopetsasedel/dev/opencode/skills/anthropic-skills"
+    - name: "ai-agency-skills"
+      path: "/Users/yorgopetsasedel/dev/opencode/skills/a-i--skills"
+  initial:
+    - "web_research"
+    - "content_write"
+    - "code_develop"
+
+# --------------------------------------------------------
+# RAG + MCP (Phase 4)
+# --------------------------------------------------------
+rag:
+  enabled: true
+  vector_store:
+    provider: "chroma"
+    persist_path: "/Users/yorgopetsasedel/dev/opencode/ai_agency/knowledge"
+  chunk_size: 512
+  search_top_k: 5
+  knowledge_sources:
+    - name: "AgentsKB"
+      url: "https://agentskb-api.agentskb.com/api/free"
+      api_key: null  # Free, no key needed
+    - name: "DuckDuckGo"
+      enabled: true
+
+mcp:
+  servers:
+    - name: "file_system"
+      type: "filesystem"
+      enabled: true
+    - name: "web_search"
+      type: "ddg-search"
+      enabled: true
+    - name: "database"
+      type: "sqlite"
+      enabled: true
+    - name: "github"
+      type: "github"
+      enabled: false  # Stage 2
+
+# --------------------------------------------------------
+# ORCHESTRATION (Phase 5)
+# --------------------------------------------------------
+orchestration:
+  mode: "supervisor"  # supervisor, router, sequential
+  default_scenario: "quick_research"
+  scenarios:
+    - name: "quick_research"
+      agents: ["research"]
+      steps: 2
+    - name: "write_article"
+      agents: ["writer", "reviewer"]
+      steps: 3
+    - name: "build_feature"
+      agents: ["developer", "reviewer"]
+      steps: 3
+    - name: "deep_analysis"
+      agents: ["analyst", "research"]
+      steps: 3
+    - name: "full_project"
+      agents: ["org", "research", "writer", "developer", "designer", "reviewer"]
+      steps: 6
+
+  human_oversight:
+    level: "medium"  # none, low, medium, high, full
+    approval_required_for:
+      - "delete"
+      - "deploy"
+      - "external_api"
+
+# --------------------------------------------------------
+# MULTI-CLIENT (Phase 6)
+# --------------------------------------------------------
+multi_client:
+  enabled: true
+  isolation: "row_level"  # row_level, schema, database
+  row_level_filter: "client_id"
+  features:
+    - "usage_tracking"
+    - "per_agent_settings"
+    - "isolated_knowledge"
+
+# --------------------------------------------------------
+# SCHEDULER
+# --------------------------------------------------------
+scheduler:
+  phase1: "celery"
+  stage2: "temporal"  # Stage 2 upgrade
+  celery:
+    broker: "redis://localhost:6379"
+    backend: "redis://localhost:6379"
+
+# --------------------------------------------------------
+# DESIGNER TOOLS (Stage 2)
+# --------------------------------------------------------
+designer:
+  image_generation:
+    provider: null  # Stage 2: dall_e, stable_diffusion
+    enabled: false
+  figma:
+    enabled: false
+  logo_generation: false
+
+# --------------------------------------------------------
+# STAGE 2 (Advanced)
+# --------------------------------------------------------
+stage2:
+  enabled: false
+  features:
+    - "authentication"
+    - "client_portal"
+    - "temporal_scheduler"
+    - "image_generation"
+    - "memory_upgrade"

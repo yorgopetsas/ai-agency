@@ -1,0 +1,58 @@
+{
+  "strategy": "round_robin",
+  "fallback_first": true,
+  "availability_cache_seconds": 60,
+  "providers": [
+    {
+      "name": "ollama_local",
+      "type": "ollama",
+      "base_url": "http://localhost:11434",
+      "model": "llama3",
+      "enabled": true,
+      "weight": 1.0
+    },
+    {
+      "name": "ollama_server",
+      "type": "ollama",
+      "base_url": "http://YOUR_SERVER_IP:11434",
+      "model": "llama3",
+      "enabled": false,
+      "weight": 1.0
+    },
+    {
+      "name": "openai",
+      "type": "openai_compatible",
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-4o-mini",
+      "api_key_env": "OPENAI_API_KEY",
+      "enabled": true,
+      "weight": 1.0
+    },
+    {
+      "name": "gemini",
+      "type": "gemini",
+      "model": "gemini-2.0-flash",
+      "api_key_env": "GEMINI_API_KEY",
+      "enabled": true,
+      "weight": 1.0
+    },
+    {
+      "name": "groq",
+      "type": "openai_compatible",
+      "base_url": "https://api.groq.com/openai/v1",
+      "model": "llama-3.3-70b-versatile",
+      "api_key_env": "GROQ_API_KEY",
+      "enabled": true,
+      "weight": 1.0
+    },
+    {
+      "name": "openrouter",
+      "type": "openai_compatible",
+      "base_url": "https://openrouter.ai/api/v1",
+      "model": "meta-llama/llama-3.3-70b-instruct",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "enabled": true,
+      "weight": 1.0
+    }
+  ]
+}

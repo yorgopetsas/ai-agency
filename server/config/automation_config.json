@@ -1,0 +1,53 @@
+{
+  "enabled": true,
+  "interval_hours": 6,
+  "max_articles_per_run": 6,
+  "max_per_feed": 2,
+  "auto_publish": true,
+  "min_rating": 50,
+  "feeds": [
+    {
+      "name": "Agent Times",
+      "url": "https://theagenttimes.com/rss.xml",
+      "topic": "ai_agents",
+      "weight": 1.2
+    },
+    {
+      "name": "OMC Agent News",
+      "url": "https://news.one-man-company.com/api/news.rss",
+      "topic": "ai_agents",
+      "weight": 1.2
+    },
+    {
+      "name": "Latent Space",
+      "url": "https://latent.space/feed",
+      "topic": "ai_agents",
+      "weight": 1.1
+    },
+    {
+      "name": "TLDR AI",
+      "url": "https://tldr.tech/api/rss/ai",
+      "topic": "ai_agents",
+      "weight": 1.0
+    },
+    {
+      "name": "MarkTechPost",
+      "url": "https://www.marktechpost.com/feed/",
+      "topic": "ai_general",
+      "weight": 0.9
+    },
+    {
+      "name": "Simon Willison",
+      "url": "https://simonwillison.net/atom/everything/",
+      "topic": "ai_general",
+      "weight": 0.9
+    },
+    {
+      "name": "MIT Tech Review AI",
+      "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed/",
+      "topic": "ai_general",
+      "weight": 1.0
+    }
+  ],
+  "processed_urls_file": "data/processed_urls.json"
+}

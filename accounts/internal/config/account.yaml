@@ -1,0 +1,38 @@
+---
+account_id: internal
+name: AI Agency Internal
+type: internal
+created: 2026-04-21
+
+agents:
+  - name: org
+    role: Manager
+    status: active
+  - name: research
+    role: Research Analyst
+    status: active
+  - name: writer
+    role: Content Writer
+    status: active
+  - name: developer
+    role: Developer
+    status: active
+
+skills:
+  - web_researcher
+  - content_writer
+  - code_developer
+
+memory:
+  enabled: true
+  framework: mem0
+
+mcp_servers:
+  - file_system
+  - web_search
+  - github
+  - database
+
+settings:
+  max_iterations: 5
+  default_model: llama3

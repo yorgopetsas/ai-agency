@@ -1,0 +1,451 @@
+{% extends "base.html" %}
+
+{% block title %}AI Agency News - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-4 mb-3">⚙️ Admin Panel</h1>
+        <p class="lead text-muted">Add news articles through our AI workflow</p>
+    </div>
+</div>
+
+<!-- Step 1: Add URL -->
+<div class="card mb-4" id="step1">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">📥 Step 1: Add News URL</h5>
+    </div>
+    <div class="card-body">
+        <div class="input-group mb-3">
+            <input type="url" class="form-control form-control-lg" id="news-url" 
+                   placeholder="https://nvidianews.nvidia.com/news/ai-agents"
+                   value="https://nvidianews.nvidia.com/news/ai-agents">
+            <button class="btn btn-primary btn-lg" type="button" id="fetch-btn">
+                🔍 Fetch & Summarize
+            </button>
+        </div>
+        <small class="text-muted">Paste a URL to an AI news article</small>
+    </div>
+</div>
+
+<!-- Step 2: Research Summary -->
+<div class="card mb-4 d-none" id="step2">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0">📝 Step 2: Review Title & Summary</h5>
+    </div>
+    <div class="card-body">
+        <h4 id="summary-title" class="mb-3 text-primary">Loading...</h4>
+        <div class="alert alert-light border">
+            <p class="mb-0" id="summary-text">Loading...</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-success btn-lg" id="approve-summary-btn">
+                ✅ Approve & Write Article
+            </button>
+            <button class="btn btn-outline-danger" id="reject-summary-btn">
+                ❌ Reject
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Step 3: Article Preview -->
+<div class="card mb-4 d-none" id="step3">
+    <div class="card-header bg-warning text-dark">
+        <h5 class="mb-0">✍️ Step 3: Article Preview</h5>
+    </div>
+    <div class="card-body">
+        <h4 id="article-headline">Loading headline...</h4>
+        <p class="text-muted fst-italic" id="article-overview"></p>
+        <hr>
+        <div id="article-paragraphs"></div>
+        <hr>
+        <div class="d-flex gap-2">
+            <button class="btn btn-success btn-lg" id="approve-article-btn">
+                ✅ Approve & Publish
+            </button>
+            <button class="btn btn-outline-danger" id="reject-article-btn">
+                ❌ Reject
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Status Messages -->
+<div class="alert alert-dismissible fade show d-none" id="status-alert">
+    <span id="status-message"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+
+<!-- LLM Provider Status -->
+<div class="card mb-4">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">🧠 LLM Providers (rotation)</h5>
+    </div>
+    <div class="card-body">
+        <div id="llm-status">
+            <p class="text-muted">Loading...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Automation Status -->
+<div class="card mb-4">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">🤖 Automation Status</h5>
+    </div>
+    <div class="card-body">
+        <div id="automation-status">
+            <p class="text-muted">Loading...</p>
+        </div>
+        <button class="btn btn-dark mt-3" id="run-automation-btn">
+            ▶️ Run Automation Now
+        </button>
+    </div>
+</div>
+
+<!-- Pending Articles -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">📋 Pending Articles</h5>
+    </div>
+    <div class="card-body">
+        <div id="pending-list">
+            <p class="text-muted">Loading...</p>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12 text-center">
+        <a href="/" class="btn btn-outline-secondary">
+            ← View Published News
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const API_BASE = '/api';
+
+let currentTitle = null;
+let currentSummary = null;
+let currentArticleId = null;
+
+function showAlert(message, type = 'info') {
+    const alert = document.getElementById('status-alert');
+    const msg = document.getElementById('status-message');
+    msg.textContent = message;
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+}
+
+function hideStep(stepId) {
+    document.getElementById(stepId).classList.add('d-none');
+}
+
+function showStep(stepId) {
+    document.getElementById(stepId).classList.remove('d-none');
+}
+
+// Step 1: Fetch URL
+document.getElementById('fetch-btn').addEventListener('click', async () => {
+    const url = document.getElementById('news-url').value;
+    const btn = document.getElementById('fetch-btn');
+    
+    if (!url) {
+        showAlert('Please enter a URL', 'warning');
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Fetching...';
+    showAlert('Fetching article and generating title + summary...', 'info');
+    
+    try {
+        const response = await fetch(`${API_BASE}/research`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({url})
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            currentTitle = result.title;
+            currentSummary = result.summary;
+            document.getElementById('summary-title').textContent = result.title || 'Untitled';
+            document.getElementById('summary-text').textContent = result.summary;
+            showStep('step2');
+            hideStep('step1');
+            showAlert('Title and summary ready! Review and approve.', 'success');
+        } else {
+            showAlert('Error: ' + result.error, 'danger');
+        }
+    } catch (error) {
+        showAlert('Error: ' + error.message, 'danger');
+    }
+    
+    btn.disabled = false;
+    btn.innerHTML = '🔍 Fetch & Summarize';
+});
+
+// Step 2: Approve & Write Article
+document.getElementById('approve-summary-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('approve-summary-btn');
+    const url = document.getElementById('news-url').value;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Writing Article...';
+    showAlert('Writing article from title and summary...', 'info');
+    
+    try {
+        const response = await fetch(`${API_BASE}/write`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                summary: currentSummary,
+                url: url,
+                title: currentTitle  // Send the title from research
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            currentArticleId = result.id;
+            
+            // Display title from research (or from result if LLM generated one)
+            const displayTitle = currentTitle || result.headline || 'Untitled';
+            document.getElementById('article-headline').textContent = displayTitle;
+            document.getElementById('article-overview').textContent = result.overview || currentSummary;
+            
+            // Show paragraphs if available, otherwise show summary as content
+            const paragraphsContainer = document.getElementById('article-paragraphs');
+            if (result.paragraphs && result.paragraphs.length > 0) {
+                paragraphsContainer.innerHTML = result.paragraphs.map(p => `<p>${p}</p>`).join('');
+            } else {
+                // Fallback: show the summary as the article content
+                paragraphsContainer.innerHTML = `<p>${currentSummary}</p>`;
+            }
+            
+            showStep('step3');
+            hideStep('step2');
+            showAlert('Article ready! Headline: ' + displayTitle, 'success');
+        } else {
+            showAlert('Error: ' + result.error, 'danger');
+        }
+    } catch (error) {
+        showAlert('Error: ' + error.message, 'danger');
+    }
+    
+    btn.disabled = false;
+    btn.innerHTML = '✅ Approve & Write Article';
+});
+
+// Step 2: Reject Summary
+document.getElementById('reject-summary-btn').addEventListener('click', () => {
+    hideStep('step2');
+    showStep('step1');
+    currentSummary = null;
+    showAlert('Summary rejected', 'secondary');
+});
+
+// Step 3: Approve & Publish
+document.getElementById('approve-article-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('approve-article-btn');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Publishing...';
+    showAlert('Publishing article...', 'info');
+    
+    try {
+        const response = await fetch(`${API_BASE}/workflow/complete`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({article_id: currentArticleId})
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert('Article published successfully! 🎉', 'success');
+            setTimeout(() => {
+                hideStep('step3');
+                showStep('step1');
+                document.getElementById('news-url').value = '';
+            }, 2000);
+        } else {
+            showAlert('Error: ' + result.error, 'danger');
+        }
+    } catch (error) {
+        showAlert('Error: ' + error.message, 'danger');
+    }
+    
+    btn.disabled = false;
+    btn.innerHTML = '✅ Approve & Publish';
+});
+
+// Step 3: Reject Article
+document.getElementById('reject-article-btn').addEventListener('click', () => {
+    hideStep('step3');
+    showStep('step1');
+    currentSummary = null;
+    currentArticleId = null;
+    showAlert('Article rejected', 'secondary');
+});
+
+// Load pending articles
+async function loadPending() {
+    const container = document.getElementById('pending-list');
+    
+    try {
+        const response = await fetch(`${API_BASE}/pending/all`);
+        const data = await response.json();
+        
+        const total = data.research.length + data.articles.length;
+        
+        if (total === 0) {
+            container.innerHTML = '<p class="text-muted">No pending articles</p>';
+            return;
+        }
+        
+        let html = '<ul class="list-group">';
+        
+        data.articles.forEach(article => {
+            html += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>📝 ${article.headline || 'Untitled'}</span>
+                <span class="badge bg-warning">Pending</span>
+            </li>`;
+        });
+        
+        data.research.forEach(research => {
+            html += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>🔍 Research from ${new URL(research.url).hostname}</span>
+                <span class="badge bg-info">Pending</span>
+            </li>`;
+        });
+        
+        html += '</ul>';
+        container.innerHTML = html;
+        
+    } catch (error) {
+        container.innerHTML = '<p class="text-danger">Error loading pending</p>';
+    }
+}
+
+loadPending();
+
+// Load LLM provider status
+async function loadLLMStatus() {
+    const container = document.getElementById('llm-status');
+
+    try {
+        const response = await fetch(`${API_BASE}/llm/status`);
+        const data = await response.json();
+
+        if (!data.providers || data.providers.length === 0) {
+            container.innerHTML = '<p class="text-muted small mb-0">No LLM providers configured</p>';
+            return;
+        }
+
+        const rows = data.providers.map(p => `
+            <tr>
+                <td><code>${p.name}</code></td>
+                <td><small class="text-muted">${p.type}</small></td>
+                <td><small>${p.model}</small></td>
+                <td>${p.enabled ? '<span class="badge bg-secondary">on</span>' : '<span class="badge bg-dark">off</span>'}</td>
+                <td>${p.available
+                    ? '<span class="badge bg-success">available</span>'
+                    : (p.enabled ? '<span class="badge bg-warning">unreachable</span>' : '<span class="badge bg-secondary">—</span>')}</td>
+            </tr>
+        `).join('');
+
+        container.innerHTML = `
+            <table class="table table-sm small mb-0">
+                <thead><tr><th>Provider</th><th>Type</th><th>Model</th><th>Enabled</th><th>Status</th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table>`;
+    } catch (error) {
+        container.innerHTML = '<p class="text-danger">Error loading LLM status</p>';
+    }
+}
+
+// Load automation status
+async function loadAutomationStatus() {
+    const container = document.getElementById('automation-status');
+    
+    try {
+        const response = await fetch(`${API_BASE}/automation/status`);
+        const data = await response.json();
+        
+        let feedsList = '';
+        if (data.feeds && data.feeds.length > 0) {
+            feedsList = '<ul class="list-unstyled small mb-0">' +
+                data.feeds.map(f => `<li>• ${f.name}: <code>${f.url}</code></li>`).join('') +
+                '</ul>';
+        } else {
+            feedsList = '<p class="text-muted small mb-0">No feeds configured</p>';
+        }
+        
+        container.innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Status:</strong> ${data.enabled ? '<span class="badge bg-success">Enabled</span>' : '<span class="badge bg-danger">Disabled</span>'}</p>
+                    <p><strong>Interval:</strong> Every ${data.interval_hours} hours</p>
+                    <p><strong>Auto-publish:</strong> ${data.auto_publish ? 'Yes' : 'No'}</p>
+                    <p><strong>Min rating:</strong> ${data.min_rating}/100</p>
+                    <p><strong>Image rotation:</strong> ${(data.image_rotation || []).map(r => `<code>${r}</code>`).join(', ')}</p>
+                    <p><strong>Processed URLs:</strong> ${data.processed_urls_count}</p>
+                    <p><strong>Currently running:</strong> ${data.currently_running ? '<span class="badge bg-warning">Yes</span>' : '<span class="badge bg-secondary">No</span>'}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>RSS Feeds (${data.feeds ? data.feeds.length : 0}):</strong></p>
+                    ${feedsList}
+                </div>
+            </div>`;
+    } catch (error) {
+        container.innerHTML = '<p class="text-danger">Error loading automation status</p>';
+    }
+}
+
+// Run automation button
+document.getElementById('run-automation-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('run-automation-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Running...';
+    
+    try {
+        const response = await fetch(`${API_BASE}/automation/run`, {
+            method: 'POST'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            const rated = (result.results || []).filter(r => r.rating);
+            const skipped = (result.results || []).filter(r => r.skipped);
+            let ratingSummary = '';
+            if (rated.length) {
+                ratingSummary = `<br><small>Published ratings: ${rated.map(r => `${r.title ? r.title.slice(0, 40) : r.url}: <strong>${r.rating}</strong>`).join('<br>')}</small>`;
+            }
+            if (skipped.length) {
+                ratingSummary += `<br><small>Skipped (below ${result.min_rating || 60}): ${skipped.length}</small>`;
+            }
+            showAlert(`Automation complete: ${result.processed || 0} processed, ${result.published_count || 0} published${ratingSummary}`, 'success');
+        } else {
+            showAlert('Automation error: ' + (result.error || result.message), 'danger');
+        }
+    } catch (error) {
+        showAlert('Error: ' + error.message, 'danger');
+    }
+    
+    btn.disabled = false;
+    btn.innerHTML = '▶️ Run Automation Now';
+    loadAutomationStatus();
+    loadPending();
+});
+
+loadAutomationStatus();
+loadLLMStatus();
+</script>
+{% endblock %}

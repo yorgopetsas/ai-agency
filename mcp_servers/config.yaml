@@ -1,0 +1,15 @@
+mcp_servers:
+  file_system:
+    enabled: true
+    class: "mcp_servers.filesystem.FileSystemMCPServer"
+  web_search:
+    provider: duckduckgo
+    enabled: true
+    class: "mcp_servers.web_search.WebSearchMCPServer"
+  database:
+    type: sqlite
+    enabled: true
+    class: "mcp_servers.database.DatabaseMCPServer"
+  github:
+    enabled: false
+    stage: "Stage 2"

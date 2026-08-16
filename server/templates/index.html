@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}AI Agency News - Daily AI News{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-4 mb-3">📰 Daily AI News</h1>
+        <p class="lead text-muted">Curated by our multi-agent system</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center p-3">
+            <h3 class="display-6 mb-0" id="total-count">0</h3>
+            <small class="text-muted">Total Articles</small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center p-3">
+            <h3 class="display-6 mb-0" id="pending-count">0</h3>
+            <small class="text-muted">Pending Review</small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center p-3">
+            <h3 class="display-6 mb-0" id="last-updated">-</h3>
+            <small class="text-muted">Last Updated</small>
+        </div>
+    </div>
+</div>
+
+<div id="articles-container">
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted">Loading articles...</p>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12 text-center">
+        <a href="/admin" class="btn btn-primary btn-lg">
+            ➕ Add New Article
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const API_BASE = '/api';
+
+async function loadArticles() {
+    const container = document.getElementById('articles-container');
+    
+    try {
+        const response = await fetch(`${API_BASE}/news`);
+        const articles = await response.json();
+        
+        if (articles.length === 0) {
+            container.innerHTML = `
+                <div class="card p-5 text-center">
+                    <h3 class="text-muted mb-3">No articles yet</h3>
+                    <p>Use the admin panel to add your first article.</p>
+                    <a href="/admin" class="btn btn-primary">Add Article</a>
+                </div>
+            `;
+            return;
+        }
+        
+        // Update counts
+        document.getElementById('total-count').textContent = articles.length;
+        document.getElementById('pending-count').textContent = '0';
+        
+        let html = '<div class="row">';
+        
+        articles.forEach((article, index) => {
+            const paragraphs = article.paragraphs || [];
+            const paragraphsHtml = paragraphs.map(p => `<p>${p}</p>`).join('');
+            
+            html += `
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        ${article.image_url ? `<img src="${article.image_url}" class="card-img-top" style="height: 180px; object-fit: cover;" alt="${article.headline || 'Article'}">` : ''}
+                        <div class="card-body">
+                            <h5 class="card-title">${article.headline || 'Untitled'}</h5>
+                            <p class="card-text text-muted fst-italic">${article.overview || ''}</p>
+                            <div class="card-text">
+                                ${paragraphsHtml}
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <a href="${article.source_url || '#'}" target="_blank">📰 Source</a>
+                            </small>
+                            <small class="text-muted">${article.date_formatted || ''}</small>
+                        </div>
+                        <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
+                            ${article.provider ? `<small class="text-muted"><span class="badge bg-light text-dark border">✍️ ${article.provider}</span></small>` : '<span></span>'}
+                        </div>
+                    </div>
+                </div>
+            `;
+        
+        html += '</div>';
+        container.innerHTML = html;
+        
+    } catch (error) {
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <h4>Error loading articles</h4>
+                <p>${error.message}</p>
+                <small>Make sure the server is running on port 5001</small>
+            </div>
+        `;
+    }
+}
+
+loadArticles();
+</script>
+{% endblock %}
