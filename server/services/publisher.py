@@ -6,11 +6,14 @@ Publishes approved articles to the website.
 
 from typing import Dict, Optional
 from pathlib import Path
+import logging
 from datetime import datetime
 from server.services.research import ResearchService
 from server.services.writer import WriterService
 from server.services.images import ImageService
 from server.services.storage import ArticleStore, locked_json
+
+logger = logging.getLogger(__name__)
 
 
 class PublisherService:
@@ -85,8 +88,13 @@ class PublisherService:
                 # Remove from pending (inside the same lock)
                 pending[:] = [p for p in pending if p.get('id') != article_id]
 
-            # Update website HTML
-            self._update_website(self.articles.all())
+            # Update website HTML (local preview + static public site)
+            try:
+                from server.services.site_builder import SiteBuilder
+                self._update_website(self.articles.all())
+                SiteBuilder().build()
+            except Exception as e:
+                logger.error(f"Website update failed after publish: {e}")
 
             return {
                 "success": True,

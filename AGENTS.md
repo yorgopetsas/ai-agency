@@ -37,3 +37,20 @@ git add -A && git commit && git push
   are read-modify-written under an `fcntl` lock via `locked_json()` in
   `server/services/storage.py`, so multiple gunicorn workers can't corrupt them.
 - `server/data/` is gitignored (runtime data, not committed).
+
+## Public site (Phase 3: static GitHub Pages, hybrid)
+- The public site is **static** and hosted on GitHub Pages:
+  `https://yorgopetsas.github.io/ai-agency-site/` (repo `yorgopetsas/ai-agency-site`).
+- `server/services/site_builder.py` generates the static site (index, per-article
+  pages, images, `feed.xml`, `sitemap.xml`) into `server/data/site_build/` using
+  relative links so it works at a repo sub-path or a custom domain root.
+- Site config: `server/config/site_config.json` (`site_url`, `site_title`, `repo`, ...).
+- Every `publisher.publish()` rebuilds the static site automatically.
+- To deploy the latest build to GitHub Pages:
+  ```
+  cd ai_agency && .venv/bin/python3 scripts/publish_site.py
+  ```
+  (`--no-push` builds without pushing; `--repo user/repo` overrides the target.)
+- Automation (RSS → research → rate → write → publish) runs locally (Ollama + hosted
+  LLMs via the router); only the output site is pushed. The Flask app stays as the
+  private admin/dev interface on port 5001.

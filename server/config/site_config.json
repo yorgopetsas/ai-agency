@@ -1,0 +1,9 @@
+{
+    "site_url": "https://yorgopetsas.github.io/ai-agency-site/",
+    "site_title": "AI Agents News",
+    "site_tagline": "Daily AI Agents news, researched and written by our multi-agent system",
+    "site_description": "Daily curated AI Agents news, researched and written by an automated multi-agent system.",
+    "max_cards": 12,
+    "feed_entries": 10,
+    "repo": "yorgopetsas/ai-agency-site"
+}
