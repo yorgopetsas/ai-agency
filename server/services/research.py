@@ -12,6 +12,7 @@ from pathlib import Path
 from datetime import datetime
 
 from server.services.llm import llm_client
+from server.services.storage import locked_json, read_json
 
 
 class ResearchService:
@@ -193,15 +194,12 @@ Response:"""
 
     def _save_pending(self, item: Dict):
         """Save item to pending list"""
-        pending = self._load_pending()
-        pending.append(item)
-        self.pending_file.write_text(json.dumps(pending, indent=2))
+        with locked_json(self.pending_file, default=[]) as pending:
+            pending.append(item)
 
     def _load_pending(self) -> list:
         """Load pending list"""
-        if self.pending_file.exists():
-            return json.loads(self.pending_file.read_text())
-        return []
+        return read_json(self.pending_file, default=[])
 
     def get_pending(self) -> list:
         """Get all pending research items"""
@@ -210,9 +208,8 @@ Response:"""
 
     def remove_pending(self, item_id: str):
         """Remove item from pending list"""
-        pending = self._load_pending()
-        pending = [p for p in pending if p.get('id') != item_id]
-        self.pending_file.write_text(json.dumps(pending, indent=2))
+        with locked_json(self.pending_file, default=[]) as pending:
+            pending[:] = [p for p in pending if p.get('id') != item_id]
 
 
 # Default instance

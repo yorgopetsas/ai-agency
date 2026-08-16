@@ -21,6 +21,7 @@ from server.services.writer import WriterService
 from server.services.publisher import PublisherService
 from server.services.rating import RatingService
 from server.services.llm import llm_client
+from server.services.storage import locked_json, read_json
 
 logger = logging.getLogger(__name__)
 
@@ -63,17 +64,13 @@ class AutomationService:
 
     def _load_processed_urls(self) -> set:
         """Load URLs already processed."""
-        if self.processed_urls_file.exists():
-            try:
-                return set(json.loads(self.processed_urls_file.read_text()))
-            except Exception:
-                return set()
-        return set()
+        return set(read_json(self.processed_urls_file, default=[]))
 
     def _save_processed_urls(self, urls: set):
         """Save processed URLs."""
         self.processed_urls_file.parent.mkdir(parents=True, exist_ok=True)
-        self.processed_urls_file.write_text(json.dumps(sorted(urls), indent=2))
+        with locked_json(self.processed_urls_file, default=[]) as data:
+            data[:] = sorted(urls)
 
     def _get_known_urls(self) -> set:
         """Get URLs already in pending or published articles."""

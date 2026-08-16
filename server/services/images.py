@@ -19,6 +19,8 @@ import requests
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from server.services.storage import read_json, atomic_write_json
+
 logger = logging.getLogger(__name__)
 
 # Simple stopwords for building search prompts
@@ -50,16 +52,10 @@ class ImageService:
         }
 
     def _load_state(self) -> Dict:
-        if self.state_file.exists():
-            try:
-                return json.loads(self.state_file.read_text())
-            except Exception:
-                return {}
-        return {}
+        return read_json(self.state_file, default={})
 
     def _save_state(self, state: Dict):
-        self.state_file.parent.mkdir(parents=True, exist_ok=True)
-        self.state_file.write_text(json.dumps(state, indent=2))
+        atomic_write_json(self.state_file, state)
 
     def _next_provider(self) -> str:
         """Round-robin through providers, skipping unavailable ones."""

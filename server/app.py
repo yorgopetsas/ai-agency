@@ -50,10 +50,19 @@ app.config['WEBSITE_DIR'].mkdir(exist_ok=True)
 articles_file = app.config['DATA_DIR'] / "articles.json"
 pending_file = app.config['DATA_DIR'] / "pending.json"
 
-if not articles_file.exists():
-    articles_file.write_text("[]")
 if not pending_file.exists():
     pending_file.write_text("[]")
+
+# Migrate legacy articles.json (if present) into per-article files,
+# then archive the legacy single-file list.
+from server.services.storage import migrate_legacy_articles, ArticleStore
+migrated = migrate_legacy_articles(articles_file)
+if migrated >= 0 and articles_file.exists():
+    try:
+        articles_file.unlink()
+    except OSError:
+        pass
+article_store = ArticleStore(data_dir=app.config['DATA_DIR'])
 
 # Register blueprints
 app.register_blueprint(news_bp, url_prefix='/api')
@@ -112,8 +121,7 @@ def admin():
 @app.route('/article/<article_id>')
 def article(article_id):
     """Single article view"""
-    articles = json.loads(articles_file.read_text() or "[]")
-    article_data = next((a for a in articles if a.get('id') == article_id), None)
+    article_data = article_store.get(article_id)
     if not article_data:
         abort(404, description="Article not found")
     return render_template('article.html', **article_data)

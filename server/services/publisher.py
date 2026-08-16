@@ -5,12 +5,12 @@ Publishes approved articles to the website.
 """
 
 from typing import Dict, Optional
-import json
 from pathlib import Path
 from datetime import datetime
 from server.services.research import ResearchService
 from server.services.writer import WriterService
 from server.services.images import ImageService
+from server.services.storage import ArticleStore, locked_json
 
 
 class PublisherService:
@@ -26,7 +26,7 @@ class PublisherService:
         self.data_dir = data_dir or Path(__file__).parent.parent / "data"
         self.website_dir = Path(__file__).parent.parent.parent / "accounts" / "internal" / "website"
         
-        self.articles_file = self.data_dir / "articles.json"
+        self.articles = ArticleStore(data_dir=self.data_dir)
         self.pending_file = self.data_dir / "pending.json"
         self.image_service = ImageService()
         
@@ -45,53 +45,48 @@ class PublisherService:
             Dict with publish result
         """
         try:
-            # Load article from pending
-            pending = self._load_pending()
+            # Load article from pending (under lock so concurrent workers are safe)
             article = None
-            
-            for item in pending:
-                if item.get('id') == article_id:
-                    article = item
-                    break
-            
-            if not article:
-                return {
-                    "success": False,
-                    "error": "Article not found"
+            with locked_json(self.pending_file, default=[]) as pending:
+                for item in pending:
+                    if item.get('id') == article_id:
+                        article = item
+                        break
+                if not article:
+                    return {
+                        "success": False,
+                        "error": "Article not found"
+                    }
+
+                # Create article record
+                article_id_new = f"article_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                article_record = {
+                    "id": article_id_new,
+                    "headline": article.get("headline", "Untitled"),
+                    "overview": article.get("overview", ""),
+                    "paragraphs": article.get("paragraphs", []),
+                    "source_url": article.get("url", ""),
+                    "image_url": article.get("image_url", ""),
+                    "rating": rating or article.get("rating"),
+                    "provider": article.get("provider"),
+                    "published_at": datetime.now().isoformat(),
+                    "date_formatted": datetime.now().strftime("%B %d, %Y")
                 }
 
-            # Create article record
-            article_id_new = f"article_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            article_record = {
-                "id": article_id_new,
-                "headline": article.get("headline", "Untitled"),
-                "overview": article.get("overview", ""),
-                "paragraphs": article.get("paragraphs", []),
-                "source_url": article.get("url", ""),
-                "image_url": article.get("image_url", ""),
-                "rating": rating or article.get("rating"),
-                "provider": article.get("provider"),
-                "published_at": datetime.now().isoformat(),
-                "date_formatted": datetime.now().strftime("%B %d, %Y")
-            }
+                # Fetch an image for the article (rotating sources)
+                if not article_record["image_url"]:
+                    image_url = self.image_service.get_image(article_record["headline"], article_id_new)
+                    if image_url:
+                        article_record["image_url"] = image_url
 
-            # Fetch an image for the article (rotating sources)
-            if not article_record["image_url"]:
-                image_url = self.image_service.get_image(article_record["headline"], article_id_new)
-                if image_url:
-                    article_record["image_url"] = image_url
+                # Save as its own file (no shared-file write race)
+                self.articles.save(article_record)
 
-            # Save to articles
-            articles = self._load_articles()
-            articles.insert(0, article_record)  # Add to top
-            self.articles_file.write_text(json.dumps(articles, indent=2))
-
-            # Remove from pending
-            pending = [p for p in pending if p.get('id') != article_id]
-            self.pending_file.write_text(json.dumps(pending, indent=2))
+                # Remove from pending (inside the same lock)
+                pending[:] = [p for p in pending if p.get('id') != article_id]
 
             # Update website HTML
-            self._update_website(articles)
+            self._update_website(self.articles.all())
 
             return {
                 "success": True,
@@ -118,9 +113,8 @@ class PublisherService:
             Dict with result
         """
         try:
-            pending = self._load_pending()
-            pending = [p for p in pending if p.get('id') != article_id]
-            self.pending_file.write_text(json.dumps(pending, indent=2))
+            with locked_json(self.pending_file, default=[]) as pending:
+                pending[:] = [p for p in pending if p.get('id') != article_id]
 
             return {
                 "success": True,
@@ -134,25 +128,13 @@ class PublisherService:
             }
 
     def get_articles(self) -> list:
-        """Get all published articles"""
-        return self._load_articles()
+        """Get all published articles (newest first)"""
+        return self.articles.all()
 
     def get_pending(self) -> list:
         """Get all pending articles"""
-        pending = self._load_pending()
-        return [p for p in pending if p.get('type') == 'article']
-
-    def _load_articles(self) -> list:
-        """Load articles list"""
-        if self.articles_file.exists():
-            return json.loads(self.articles_file.read_text())
-        return []
-
-    def _load_pending(self) -> list:
-        """Load pending list"""
-        if self.pending_file.exists():
-            return json.loads(self.pending_file.read_text())
-        return []
+        with locked_json(self.pending_file, default=[]) as pending:
+            return [p for p in pending if p.get('type') == 'article']
 
     def _update_website(self, articles: list):
         """Update the website HTML with articles"""

@@ -23,7 +23,17 @@ git add -A && git commit && git push
 
 ## Project layout
 - `server/` — Flask API (port 5001), routes, services, templates
-- `server/services/` — llm.py (multi-provider router), rating.py, automation.py,
-  research.py, writer.py, publisher.py, images.py
+- `server/services/` — storage.py (locked JSON + per-article store), llm.py
+  (multi-provider router), rating.py, automation.py, research.py, writer.py,
+  publisher.py, images.py
 - `server/config/` — automation_config.json, llm_config.json
 - `server/scheduler.py` — APScheduler 6-hour automation
+
+## Storage model
+- Articles are stored as **one JSON file per article** under `server/data/articles/`
+  (write via `ArticleStore`, read via `article_store` in `app.py`).
+  No single shared `articles.json` file.
+- Shared JSON files (`pending.json`, `processed_urls.json`, `image_rotation_state.json`)
+  are read-modify-written under an `fcntl` lock via `locked_json()` in
+  `server/services/storage.py`, so multiple gunicorn workers can't corrupt them.
+- `server/data/` is gitignored (runtime data, not committed).
