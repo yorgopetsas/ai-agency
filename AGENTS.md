@@ -39,11 +39,14 @@ git add -A && git commit && git push
 - `server/data/` is gitignored (runtime data, not committed).
 
 ## Public site (Phase 3: static GitHub Pages, hybrid)
-- The public site is **static** and hosted on GitHub Pages:
-  `https://yorgopetsas.github.io/ai-agency-site/` (repo `yorgopetsas/ai-agency-site`).
+- The public site is **static** and hosted on GitHub Pages at the custom domain
+  **`https://amanita.barcelona/`** (repo `yorgopetsas/ai-agency-site`, Pages
+  custom domain `amanita.barcelona`, DNS via Cloudflare — apex A records to
+  GitHub's 185.199.108-111 and `www` CNAME to `yorgopetsas.github.io`).
 - `server/services/site_builder.py` generates the static site (index, per-article
-  pages, images, `feed.xml`, `sitemap.xml`) into `server/data/site_build/` using
-  relative links so it works at a repo sub-path or a custom domain root.
+  pages, images, `feed.xml`, `sitemap.xml`, and the `CNAME` file) into
+  `server/data/site_build/` using relative links. The `CNAME` file keeps the
+  custom domain registered across redeploys.
 - Site config: `server/config/site_config.json` (`site_url`, `site_title`, `repo`, ...).
 - Every `publisher.publish()` rebuilds the static site automatically.
 - To deploy the latest build to GitHub Pages:

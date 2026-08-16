@@ -321,6 +321,14 @@ class SiteBuilder:
 
     # --- main build ---
 
+    def _site_hostname(self) -> str:
+        """Bare hostname from site_url (for the Pages CNAME file)."""
+        from urllib.parse import urlsplit
+        try:
+            return urlsplit(self.config.get("site_url", "")).hostname or ""
+        except Exception:
+            return ""
+
     def build(self) -> Path:
         """Generate the full static site into out_dir and return it."""
         articles = self.store.all()
@@ -353,6 +361,12 @@ class SiteBuilder:
         (self.out_dir / "index.html").write_text(self._build_index(articles))
         (self.out_dir / "feed.xml").write_text(self._build_feed(articles))
         (self.out_dir / "sitemap.xml").write_text(self._build_sitemap(articles))
+
+        # CNAME file keeps the GitHub Pages custom domain across redeploys
+        # (the publish script syncs the whole build dir into the repo).
+        cname_host = self._site_hostname()
+        if cname_host:
+            (self.out_dir / "CNAME").write_text(cname_host + "\n")
 
         for article in articles:
             page_dir = article_dir / article["id"]
