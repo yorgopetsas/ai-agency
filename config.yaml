@@ -103,6 +103,7 @@ skills:
     - "scaffold-react-app"
     - "create-component"
     - "containerize-docker"
+    - "generate-website"
 
 # --------------------------------------------------------
 # RAG + MCP (Phase 4)

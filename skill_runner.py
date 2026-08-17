@@ -146,6 +146,12 @@ CONFIGURED_SKILLS = {
         "category": "containerize-docker",
         "skill": "containerize-docker",
         "note": "Generates Dockerfiles, docker-compose.yml, and .dockerignore for React, Flask, or fullstack"
+    },
+    "website_generator": {
+        "library": "agency",
+        "category": "generate-website",
+        "skill": "generate-website",
+        "note": "End-to-end orchestration: design → scaffold → components → Docker"
     }
 }
 
