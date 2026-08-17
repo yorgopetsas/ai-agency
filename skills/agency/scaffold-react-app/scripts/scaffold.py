@@ -601,7 +601,7 @@ def scaffold(name: str, industry: str, pages: list, output_dir: Path):
     )
 
     routes = "\n".join(
-        '        <Route path="/' + ('' if p == 'home' else p) + '" element=<' + PAGE_TEMPLATES[p][0] + ' />} />'
+        '        <Route path="/' + ('' if p == 'home' else p) + '" element={<' + PAGE_TEMPLATES[p][0] + ' />} />'
         for p in valid_pages
     )
 

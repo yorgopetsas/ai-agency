@@ -104,6 +104,7 @@ skills:
     - "create-component"
     - "containerize-docker"
     - "generate-website"
+    - "website-tests"
 
 # --------------------------------------------------------
 # RAG + MCP (Phase 4)

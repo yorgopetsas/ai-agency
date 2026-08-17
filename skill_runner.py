@@ -152,6 +152,12 @@ CONFIGURED_SKILLS = {
         "category": "generate-website",
         "skill": "generate-website",
         "note": "End-to-end orchestration: design → scaffold → components → Docker"
+    },
+    "website_tester": {
+        "library": "agency",
+        "category": "website-tests",
+        "skill": "website-tests",
+        "note": "Python smoke tests + Playwright browser tests for generated websites"
     }
 }
 
