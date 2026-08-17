@@ -255,3 +255,65 @@ def moltbook_submolts():
 
     submolts = publisher.list_submolts()
     return jsonify({"submolts": submolts})
+
+
+# ============================================================
+# AgentMail
+# ============================================================
+
+@social_bp.route('/social/agentmail/status', methods=['GET'])
+def agentmail_status():
+    """Get AgentMail status."""
+    from server.services.social.agentmail import agentmail_service
+    return jsonify(agentmail_service.get_status())
+
+
+@social_bp.route('/social/agentmail/inbox', methods=['GET'])
+def agentmail_inbox():
+    """Check AgentMail inbox for new messages."""
+    from server.services.social.agentmail import agentmail_service
+    limit = request.args.get("limit", 10, type=int)
+    messages = agentmail_service.check_inbox(limit=limit)
+    return jsonify({
+        "messages": [
+            {
+                "message_id": m.message_id,
+                "thread_id": m.thread_id,
+                "subject": m.subject,
+                "from": m.from_email,
+                "timestamp": m.timestamp,
+                "preview": m.text[:200] if m.text else "",
+            }
+            for m in messages
+        ]
+    })
+
+
+@social_bp.route('/social/agentmail/send', methods=['POST'])
+def agentmail_send():
+    """Send an email via AgentMail."""
+    from server.services.social.agentmail import agentmail_service
+    data = request.json or {}
+
+    to = data.get("to")
+    subject = data.get("subject")
+    text = data.get("text")
+
+    if not all([to, subject, text]):
+        return jsonify({"error": "to, subject, and text required"}), 400
+
+    result = agentmail_service.send_email(to=to, subject=subject, text=text)
+    return jsonify(result)
+
+
+@social_bp.route('/social/agentmail/verification', methods=['GET'])
+def agentmail_verification():
+    """Search for verification codes in inbox."""
+    from server.services.social.agentmail import agentmail_service
+    platform = request.args.get("platform")
+    code = agentmail_service.get_verification_code(platform=platform)
+    return jsonify({
+        "platform": platform,
+        "verification_code": code,
+        "found": code is not None,
+    })
