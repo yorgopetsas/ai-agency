@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "AI Agency",
+    "slug": "ai-agency-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./src/assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#6366f1"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.amanita.agency"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/adaptive-icon.png",
+        "backgroundColor": "#6366f1"
+      },
+      "package": "com.amanita.agency"
+    },
+    "plugins": ["expo-secure-store"]
+  }
+}

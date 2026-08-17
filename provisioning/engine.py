@@ -224,6 +224,25 @@ class ProvisioningEngine:
             logger.warning(f"Website build warning (non-fatal): {e}")
             result.steps_completed.append("website_build_skipped")
 
+        # Step 7: Generate mobile app
+        try:
+            from server.services.mobile_builder import mobile_app_builder
+            branding_data = branding.to_dict() if hasattr(branding, 'to_dict') else (branding or {})
+            mobile_result = mobile_app_builder.build(
+                client_id=client_id,
+                branding=branding_data,
+            )
+            if mobile_result["success"]:
+                result.steps_completed.append("mobile_app_generated")
+                logger.info(f"Generated mobile app for client {client_id}")
+            else:
+                result.steps_completed.append("mobile_app_skipped")
+                logger.warning(f"Mobile app skipped: {mobile_result.get('error', 'unknown')}")
+        except Exception as e:
+            # Non-fatal — mobile app can be generated later
+            logger.warning(f"Mobile app generation warning (non-fatal): {e}")
+            result.steps_completed.append("mobile_app_skipped")
+
         result.success = True
         logger.info(f"Provisioning complete for client {client_id} ({name})")
         return result
