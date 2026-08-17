@@ -33,6 +33,7 @@ from server.routes.reseller import reseller_bp
 from server.routes.client import client_bp
 from server.routes.branding import branding_bp
 from server.routes.billing import billing_bp
+from server.routes.provisioning import provisioning_bp
 from server.services.automation import automation_service
 from server.scheduler import init_scheduler
 from auth.middleware import init_auth
@@ -77,6 +78,7 @@ app.register_blueprint(reseller_bp)
 app.register_blueprint(client_bp)
 app.register_blueprint(branding_bp)
 app.register_blueprint(billing_bp)
+app.register_blueprint(provisioning_bp)
 app.register_blueprint(news_bp, url_prefix='/api')
 app.register_blueprint(workflow_bp, url_prefix='/api')
 app.register_blueprint(admin_bp, url_prefix='/api')
