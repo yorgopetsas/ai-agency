@@ -19,6 +19,7 @@ from typing import Optional, Dict, List
 SKILLS_BASE = Path(__file__).parent / "skills"
 A_I_SKILLS = SKILLS_BASE / "a-i--skills" / "organized"
 ANTHROPIC_SKILLS = SKILLS_BASE / "anthropic" / "anthropic" / "skills"
+AGENCY_SKILLS = SKILLS_BASE / "agency"
 
 class SkillRunner:
     """Execute skills from the skill libraries"""
@@ -30,7 +31,8 @@ class SkillRunner:
         """Discover all available skills"""
         skills = {
             "a-i--skills": {},
-            "anthropic": {}
+            "anthropic": {},
+            "agency": {}
         }
         
         # Discover a-i--skills
@@ -46,6 +48,14 @@ class SkillRunner:
             for skill_dir in ANTHROPIC_SKILLS.iterdir():
                 if skill_dir.is_dir():
                     skills["anthropic"][skill_dir.name] = [skill_dir.stem]
+        
+        # Discover agency skills
+        if AGENCY_SKILLS.exists():
+            for skill_dir in AGENCY_SKILLS.iterdir():
+                if skill_dir.is_dir():
+                    skill_md = skill_dir / "SKILL.md"
+                    if skill_md.exists():
+                        skills["agency"][skill_dir.name] = [skill_dir.name]
         
         return skills
     
@@ -63,6 +73,13 @@ class SkillRunner:
     
     def read_skill(self, library: str, category: str, skill: str) -> Optional[str]:
         """Read skill instructions"""
+        if library == "agency":
+            skill_path = AGENCY_SKILLS / skill
+            skill_file = skill_path / "SKILL.md"
+            if skill_file.exists():
+                return skill_file.read_text()
+            return None
+        
         path = self.get_skill_path(library, category, skill)
         if path and path.exists():
             # Look for SKILL.md file
@@ -73,6 +90,19 @@ class SkillRunner:
             # Or read .skill file
             for f in path.glob("*.skill"):
                 return f.read_text()
+        return None
+    
+    def run_skill_script(self, library: str, skill: str, script_args: list) -> Optional[str]:
+        """Run a skill's script with given arguments"""
+        if library == "agency":
+            script_path = AGENCY_SKILLS / skill / "scripts"
+            scripts = list(script_path.glob("*.py")) if script_path.exists() else []
+            if scripts:
+                result = subprocess.run(
+                    ["python3", str(scripts[0])] + script_args,
+                    capture_output=True, text=True, timeout=30
+                )
+                return result.stdout if result.returncode == 0 else result.stderr
         return None
 
 # Initial configured skills
@@ -92,6 +122,18 @@ CONFIGURED_SKILLS = {
         "library": "a-i--skills",
         "category": "development",
         "skill": "python-packaging-patterns"
+    },
+    "ui_ux_designer": {
+        "library": "agency",
+        "category": "ui-ux-design",
+        "skill": "ui-ux-design",
+        "note": "Design system intelligence: styles, palettes, fonts, UX guidelines"
+    },
+    "website_scaffolder": {
+        "library": "agency",
+        "category": "scaffold-react-app",
+        "skill": "scaffold-react-app",
+        "note": "Creates production-ready React + Vite + Tailwind projects"
     }
 }
 
@@ -127,5 +169,10 @@ if __name__ == "__main__":
     anthropic_skills = runner.list_skills("anthropic")
     for category, skill_list in anthropic_skills.items():
         print(f"  {category}: {len(skill_list)} skills")
+    
+    print(f"\nAgency Skills:")
+    agency_skills = runner.list_skills("agency")
+    for category, skill_list in agency_skills.items():
+        print(f"  {category}: {', '.join(skill_list)}")
     
     list_initial_skills()

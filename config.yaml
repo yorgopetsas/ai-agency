@@ -92,10 +92,15 @@ skills:
       path: "/Users/yorgopetsasedel/dev/opencode/skills/anthropic-skills"
     - name: "ai-agency-skills"
       path: "/Users/yorgopetsasedel/dev/opencode/skills/a-i--skills"
+    - name: "agency-skills"
+      path: "/Users/yorgopetsasedel/dev/opencode/ai_agency/skills/agency"
   initial:
     - "web_research"
     - "content_write"
     - "code_develop"
+  agency:
+    - "ui-ux-design"
+    - "scaffold-react-app"
 
 # --------------------------------------------------------
 # RAG + MCP (Phase 4)
@@ -151,6 +156,9 @@ orchestration:
     - name: "full_project"
       agents: ["org", "research", "writer", "developer", "designer", "reviewer"]
       steps: 6
+    - name: "create_website"
+      agents: ["org", "research", "designer", "developer", "reviewer"]
+      steps: 5
 
   human_oversight:
     level: "medium"  # none, low, medium, high, full

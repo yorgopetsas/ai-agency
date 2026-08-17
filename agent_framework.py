@@ -22,8 +22,9 @@ class AgentRole(Enum):
     RESEARCH = "research" # Research Analyst
     WRITER = "writer"     # Content Writer
     DEVELOPER = "developer" # Developer
-    REVIEWER = "reviewer"  # Content Reviewer
     DESIGNER = "designer"  # Designer
+    ANALYST = "analyst"    # Market Analyst
+    REVIEWER = "reviewer"  # Content Reviewer
 
 # Agent Status
 class AgentStatus(Enum):
@@ -116,6 +117,8 @@ class AgentFactory:
             BaseAgent("researcher", AgentRole.RESEARCH, account_id),
             BaseAgent("writer", AgentRole.WRITER, account_id),
             BaseAgent("developer", AgentRole.DEVELOPER, account_id),
+            BaseAgent("designer", AgentRole.DESIGNER, account_id),
+            BaseAgent("analyst", AgentRole.ANALYST, account_id),
             BaseAgent("reviewer", AgentRole.REVIEWER, account_id),
         ]
 
@@ -127,6 +130,11 @@ class TaskRouter:
             "research": AgentRole.RESEARCH,
             "write": AgentRole.WRITER,
             "develop": AgentRole.DEVELOPER,
+            "design": AgentRole.DESIGNER,
+            "style": AgentRole.DESIGNER,
+            "color": AgentRole.DESIGNER,
+            "layout": AgentRole.DESIGNER,
+            "analyze": AgentRole.ANALYST,
             "review": AgentRole.REVIEWER,
             "manage": AgentRole.ORG,
         }
