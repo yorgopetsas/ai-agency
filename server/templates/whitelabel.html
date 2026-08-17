@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+
+{% block title %}Whitelabel Dashboard — Amanita AI Agency{% endblock %}
+
+{% block extra_style %}
+.stat-card { text-align: center; padding: 1.5rem; }
+.stat-card .stat-number { font-size: 2.5rem; font-weight: 700; color: var(--primary); }
+.stat-card .stat-label { font-size: 0.9rem; color: #666; margin-top: 0.25rem; }
+.badge-status { font-size: 0.75rem; padding: 0.3em 0.6em; }
+.table th { font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; color: #666; }
+.nav-pills .nav-link.active { background-color: var(--primary); }
+.tab-content { padding-top: 1rem; }
+.modal-header { background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: #fff; }
+.branding-swatch { display: inline-block; width: 24px; height: 24px; border-radius: 4px; border: 1px solid #ddd; vertical-align: middle; margin-right: 4px; }
+{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Whitelabel Dashboard</h2>
+
+<!-- Nav tabs -->
+<ul class="nav nav-pills mb-4" id="dashboardTabs" role="tablist">
+  <li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#overview">Overview</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#clients">Clients</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#resellers">Resellers</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#plans">Plans & Billing</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#branding">Branding</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#provisioning">Provisioning</a></li>
+</ul>
+
+<div class="tab-content">
+
+<!-- ===== OVERVIEW ===== -->
+<div class="tab-pane fade show active" id="overview">
+  <div class="row g-3 mb-4" id="stat-cards">
+    <div class="col-md-3"><div class="card stat-card"><div class="stat-number" id="stat-clients">-</div><div class="stat-label">Total Clients</div></div></div>
+    <div class="col-md-3"><div class="card stat-card"><div class="stat-number" id="stat-resellers">-</div><div class="stat-label">Resellers</div></div></div>
+    <div class="col-md-3"><div class="card stat-card"><div class="stat-number" id="stat-active">-</div><div class="stat-label">Active Plans</div></div></div>
+    <div class="col-md-3"><div class="card stat-card"><div class="stat-number" id="stat-provisioned">-</div><div class="stat-label">Provisioned</div></div></div>
+  </div>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="card"><div class="card-header"><h6 class="mb-0">Recent Clients</h6></div>
+        <div class="card-body p-0"><div id="recent-clients-list">Loading...</div></div></div>
+    </div>
+    <div class="col-md-6">
+      <div class="card"><div class="card-header"><h6 class="mb-0">Plan Distribution</h6></div>
+        <div class="card-body"><div id="plan-distribution">Loading...</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CLIENTS ===== -->
+<div class="tab-pane fade" id="clients">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">Clients</h5>
+    <button class="btn btn-primary btn-sm" onclick="showProvisionModal()">+ Provision Client</button>
+  </div>
+  <div class="card">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>Name</th><th>Email</th><th>Industry</th><th>Plan</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="clients-table"><tr><td colspan="6" class="text-muted">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== RESELLERS ===== -->
+<div class="tab-pane fade" id="resellers">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">Resellers</h5>
+    <button class="btn btn-primary btn-sm" onclick="showCreateResellerModal()">+ Create Reseller</button>
+  </div>
+  <div class="card">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>Name</th><th>Slug</th><th>Email</th><th>Clients</th><th>Max</th><th>Status</th></tr></thead>
+          <tbody id="resellers-table"><tr><td colspan="6" class="text-muted">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PLANS ===== -->
+<div class="tab-pane fade" id="plans">
+  <h5 class="mb-3">Available Plans</h5>
+  <div class="row g-3" id="plans-grid"></div>
+</div>
+
+<!-- ===== BRANDING ===== -->
+<div class="tab-pane fade" id="branding">
+  <h5 class="mb-3">Client Branding</h5>
+  <div class="mb-3">
+    <select class="form-select" id="branding-client-select" onchange="loadClientBranding(this.value)" style="width:auto;display:inline-block;">
+      <option value="">Select client...</option>
+    </select>
+  </div>
+  <div class="card d-none" id="branding-card">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <h6>Colors</h6>
+          <div class="mb-2"><span class="branding-swatch" id="swatch-primary"></span> Primary: <span id="brand-primary">-</span></div>
+          <div class="mb-2"><span class="branding-swatch" id="swatch-secondary"></span> Secondary: <span id="brand-secondary">-</span></div>
+          <div class="mb-2"><span class="branding-swatch" id="swatch-accent"></span> Accent: <span id="brand-accent">-</span></div>
+        </div>
+        <div class="col-md-6">
+          <h6>Settings</h6>
+          <div class="mb-1">Theme: <span id="brand-theme">-</span></div>
+          <div class="mb-1">Font: <span id="brand-font">-</span></div>
+          <div class="mb-1">Domain: <span id="brand-domain">-</span></div>
+          <div class="mb-1">Welcome: <span id="brand-welcome">-</span></div>
+          <div class="mb-1">Footer: <span id="brand-footer">-</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PROVISIONING ===== -->
+<div class="tab-pane fade" id="provisioning">
+  <h5 class="mb-3">Provision New Client</h5>
+  <div class="card">
+    <div class="card-body">
+      <form id="provision-form" onsubmit="submitProvision(event)">
+        <div class="row g-3">
+          <div class="col-md-4"><label class="form-label">Business Name *</label><input class="form-control" id="prov-name" required></div>
+          <div class="col-md-4"><label class="form-label">Email *</label><input class="form-control" id="prov-email" type="email" required></div>
+          <div class="col-md-4"><label class="form-label">Admin Password *</label><input class="form-control" id="prov-password" type="password" required minlength="8"></div>
+          <div class="col-md-3"><label class="form-label">Company</label><input class="form-control" id="prov-company"></div>
+          <div class="col-md-3"><label class="form-label">Phone</label><input class="form-control" id="prov-phone"></div>
+          <div class="col-md-3"><label class="form-label">Industry</label>
+            <select class="form-select" id="prov-industry">
+              <option value="">Select...</option>
+              <option>healthcare</option><option>finance</option><option>ecommerce</option>
+              <option>education</option><option>technology</option><option>real_estate</option>
+              <option>marketing</option><option>legal</option><option>manufacturing</option><option>other</option>
+            </select>
+          </div>
+          <div class="col-md-3"><label class="form-label">Plan</label>
+            <select class="form-select" id="prov-plan">
+              <option value="free">Free</option><option value="starter">Starter</option>
+              <option value="pro">Pro</option><option value="enterprise">Enterprise</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-3"><button type="submit" class="btn btn-primary" id="prov-submit-btn">Provision Client</button></div>
+      </form>
+      <div id="provision-result" class="mt-3 d-none"></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /tab-content -->
+
+<!-- Provision Modal (shared) -->
+<div class="modal fade" id="provisionModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Quick Provision</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <div class="mb-3"><label class="form-label">Name *</label><input class="form-control" id="modal-prov-name" required></div>
+    <div class="mb-3"><label class="form-label">Email *</label><input class="form-control" id="modal-prov-email" type="email" required></div>
+    <div class="mb-3"><label class="form-label">Password *</label><input class="form-control" id="modal-prov-password" type="password" required></div>
+    <div class="mb-3"><label class="form-label">Plan</label>
+      <select class="form-select" id="modal-prov-plan"><option value="free">Free</option><option value="starter">Starter</option><option value="pro">Pro</option></select>
+    </div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-primary" onclick="submitModalProvision()">Provision</button></div>
+</div></div></div>
+
+<!-- Status alert -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:11">
+  <div id="live-toast" class="toast align-items-center text-bg-success border-0" role="alert">
+    <div class="d-flex"><div class="toast-body" id="toast-msg"></div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const API = '/api';
+let authToken = localStorage.getItem('wl_token');
+
+function headers() { return authToken ? {'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json'} : {'Content-Type': 'application/json'}; }
+
+function toast(msg, type='success') {
+  document.getElementById('toast-msg').textContent = msg;
+  const t = new bootstrap.Toast(document.getElementById('live-toast'));
+  t.show();
+}
+
+async function api(path, opts={}) {
+  const r = await fetch(API + path, {headers: headers(), ...opts});
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+// ========== LOGIN ==========
+async function login(email, password) {
+  const r = await fetch(API + '/auth/login', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email, password})});
+  const d = await r.json();
+  if (r.ok && d.access_token) { authToken = d.access_token; localStorage.setItem('wl_token', authToken); return true; }
+  return false;
+}
+
+// ========== OVERVIEW ==========
+async function loadOverview() {
+  try {
+    const [clients, resellers, plans] = await Promise.all([
+      api('/clients'),
+      api('/resellers'),
+      api('/billing/plans'),
+    ]);
+    const cl = clients.clients || [];
+    const rl = resellers.resellers || [];
+    document.getElementById('stat-clients').textContent = cl.length;
+    document.getElementById('stat-resellers').textContent = rl.length;
+    document.getElementById('stat-active').textContent = cl.filter(c => c.status === 'active').length;
+    document.getElementById('stat-provisioned').textContent = cl.length;
+
+    // Recent clients
+    const recent = cl.slice(-5).reverse();
+    document.getElementById('recent-clients-list').innerHTML = recent.length
+      ? recent.map(c => `<div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+          <div><strong>${c.name}</strong><br><small class="text-muted">${c.email}</small></div>
+          <span class="badge bg-${c.status==='active'?'success':'secondary'} badge-status">${c.status}</span>
+        </div>`).join('')
+      : '<p class="text-muted p-3">No clients yet</p>';
+
+    // Plan distribution
+    const planCounts = {};
+    cl.forEach(c => { planCounts[c.plan] = (planCounts[c.plan]||0) + 1; });
+    document.getElementById('plan-distribution').innerHTML = Object.entries(planCounts).length
+      ? Object.entries(planCounts).map(([p,n]) => `<div class="d-flex justify-content-between px-3 py-2 border-bottom"><span>${p}</span><span class="badge bg-primary">${n}</span></div>`).join('')
+      : '<p class="text-muted">No data</p>';
+  } catch(e) { console.error('Overview error:', e); }
+}
+
+// ========== CLIENTS ==========
+async function loadClients() {
+  try {
+    const data = await api('/clients');
+    const clients = data.clients || [];
+    document.getElementById('clients-table').innerHTML = clients.length
+      ? clients.map(c => `<tr>
+          <td>${c.name}</td><td>${c.email}</td><td>${c.industry||'-'}</td>
+          <td><span class="badge bg-info">${c.plan}</span></td>
+          <td><span class="badge bg-${c.status==='active'?'success':'warning'} badge-status">${c.status}</span></td>
+          <td><button class="btn btn-outline-secondary btn-sm" onclick="viewClientBranding('${c.id}')">Branding</button></td>
+        </tr>`).join('')
+      : '<tr><td colspan="6" class="text-muted">No clients yet. Provision one!</td></tr>';
+    // Populate branding select
+    const sel = document.getElementById('branding-client-select');
+    sel.innerHTML = '<option value="">Select client...</option>' + clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  } catch(e) { console.error('Clients error:', e); }
+}
+
+// ========== RESELLERS ==========
+async function loadResellers() {
+  try {
+    const data = await api('/resellers');
+    const resellers = data.resellers || [];
+    document.getElementById('resellers-table').innerHTML = resellers.length
+      ? resellers.map(r => `<tr>
+          <td>${r.name}</td><td><code>${r.slug}</code></td><td>${r.email}</td>
+          <td>${r.client_count||0}</td><td>${r.max_clients}</td>
+          <td><span class="badge bg-${r.status==='active'?'success':'secondary'} badge-status">${r.status}</span></td>
+        </tr>`).join('')
+      : '<tr><td colspan="6" class="text-muted">No resellers</td></tr>';
+  } catch(e) { console.error('Resellers error:', e); }
+}
+
+// ========== PLANS ==========
+async function loadPlans() {
+  try {
+    const data = await api('/billing/plans');
+    const plans = data.plans || [];
+    document.getElementById('plans-grid').innerHTML = plans.map(p => {
+      const q = p.quotas || {};
+      return `<div class="col-md-3"><div class="card h-100">
+        <div class="card-header bg-primary text-white"><h6 class="mb-0">${p.name} <span class="float-end">$${p.price}/mo</span></h6></div>
+        <div class="card-body">
+          <div class="mb-1">Tasks: <strong>${q.tasks_per_month===-1?'∞':q.tasks_per_month}</strong></div>
+          <div class="mb-1">API Calls: <strong>${q.api_calls===-1?'∞':q.api_calls?.toLocaleString()}</strong></div>
+          <div class="mb-1">Users: <strong>${q.users===-1?'∞':q.users}</strong></div>
+          <div class="mb-1">Storage: <strong>${q.storage_mb===-1?'∞':q.storage_mb} MB</strong></div>
+          <hr><small class="text-muted">${(p.features||[]).slice(0,3).join(', ')}</small>
+        </div>
+      </div></div>`;
+    }).join('');
+  } catch(e) { console.error('Plans error:', e); }
+}
+
+// ========== BRANDING ==========
+async function loadClientBranding(clientId) {
+  if (!clientId) { document.getElementById('branding-card').classList.add('d-none'); return; }
+  try {
+    const data = await api(`/branding/${clientId}`);
+    const b = data.branding;
+    document.getElementById('branding-card').classList.remove('d-none');
+    document.getElementById('brand-primary').textContent = b.primary_color;
+    document.getElementById('swatch-primary').style.background = b.primary_color;
+    document.getElementById('brand-secondary').textContent = b.secondary_color;
+    document.getElementById('swatch-secondary').style.background = b.secondary_color;
+    document.getElementById('brand-accent').textContent = b.accent_color;
+    document.getElementById('swatch-accent').style.background = b.accent_color;
+    document.getElementById('brand-theme').textContent = b.theme;
+    document.getElementById('brand-font').textContent = b.font_family;
+    document.getElementById('brand-domain').textContent = b.custom_domain || '(default)';
+    document.getElementById('brand-welcome').textContent = b.welcome_message || '-';
+    document.getElementById('brand-footer').textContent = b.footer_text || '-';
+  } catch(e) { document.getElementById('branding-card').classList.add('d-none'); }
+}
+
+function viewClientBranding(clientId) {
+  document.querySelector('[href="#branding"]').click();
+  document.getElementById('branding-client-select').value = clientId;
+  loadClientBranding(clientId);
+}
+
+// ========== PROVISIONING ==========
+function showProvisionModal() { new bootstrap.Modal(document.getElementById('provisionModal')).show(); }
+
+async function submitProvision(e) {
+  e.preventDefault();
+  const btn = document.getElementById('prov-submit-btn');
+  btn.disabled = true; btn.textContent = 'Provisioning...';
+  try {
+    const data = await api('/provisioning/provision', {method:'POST', body: JSON.stringify({
+      name: document.getElementById('prov-name').value,
+      email: document.getElementById('prov-email').value,
+      admin_password: document.getElementById('prov-password').value,
+      company: document.getElementById('prov-company').value || undefined,
+      phone: document.getElementById('prov-phone').value || undefined,
+      industry: document.getElementById('prov-industry').value || undefined,
+      plan_id: document.getElementById('prov-plan').value,
+    })});
+    const r = document.getElementById('provision-result');
+    r.classList.remove('d-none');
+    r.innerHTML = `<div class="alert alert-success">
+      <strong>Provisioned!</strong> Client: ${data.client.name} | Plan: ${data.plan.plan_id} | Admin: ${data.admin_user.email}<br>
+      <small>Steps: ${data.steps_completed.join(' → ')}</small>
+    </div>`;
+    toast('Client provisioned successfully!');
+    document.getElementById('provision-form').reset();
+    loadClients(); loadResellers(); loadOverview();
+  } catch(e) {
+    document.getElementById('provision-result').classList.remove('d-none');
+    document.getElementById('provision-result').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+  }
+  btn.disabled = false; btn.textContent = 'Provision Client';
+}
+
+async function submitModalProvision() {
+  try {
+    const data = await api('/provisioning/provision', {method:'POST', body: JSON.stringify({
+      name: document.getElementById('modal-prov-name').value,
+      email: document.getElementById('modal-prov-email').value,
+      admin_password: document.getElementById('modal-prov-password').value,
+      plan_id: document.getElementById('modal-prov-plan').value,
+    })});
+    bootstrap.Modal.getInstance(document.getElementById('provisionModal')).hide();
+    toast(`Provisioned ${data.client.name}!`);
+    loadClients(); loadResellers(); loadOverview();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+function showCreateResellerModal() { toast('Create reseller via API: POST /api/resellers'); }
+
+// ========== INIT ==========
+(async function init() {
+  // Try stored token, or use default admin login
+  if (!authToken) {
+    const ok = await login('admin@amanita.barcelona', 'admin12345');
+    if (!ok) { document.querySelector('main').innerHTML = '<div class="alert alert-warning">Please log in first. Token required.</div>'; return; }
+  }
+  loadOverview(); loadClients(); loadResellers(); loadPlans();
+})();
+</script>
+{% endblock %}

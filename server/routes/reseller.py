@@ -47,9 +47,14 @@ def list_resellers():
     parent_id = request.args.get("parent_id")
     status = request.args.get("status")
     resellers = reseller_manager.list_resellers(parent_id=parent_id, status=status)
+    result = []
+    for r in resellers:
+        d = r.to_dict()
+        d["client_count"] = reseller_manager.db.count_clients(r.id)
+        result.append(d)
     return jsonify({
-        "resellers": [r.to_dict() for r in resellers],
-        "total": len(resellers),
+        "resellers": result,
+        "total": len(result),
     })
 
 
