@@ -362,12 +362,6 @@ class SiteBuilder:
         (self.out_dir / "feed.xml").write_text(self._build_feed(articles))
         (self.out_dir / "sitemap.xml").write_text(self._build_sitemap(articles))
 
-        # CNAME file keeps the GitHub Pages custom domain across redeploys
-        # (the publish script syncs the whole build dir into the repo).
-        cname_host = self._site_hostname()
-        if cname_host:
-            (self.out_dir / "CNAME").write_text(cname_host + "\n")
-
         for article in articles:
             page_dir = article_dir / article["id"]
             page_dir.mkdir(parents=True, exist_ok=True)
