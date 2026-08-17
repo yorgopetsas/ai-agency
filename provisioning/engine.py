@@ -93,9 +93,9 @@ class ProvisioningEngine:
         Provision a new client end-to-end.
 
         Args:
-            name: Client/business name
+            name: Client/business name (2-100 chars)
             email: Client contact email
-            admin_password: Password for the client admin user
+            admin_password: Password for the client admin user (8+ chars)
             plan_id: Billing plan (free, starter, pro, enterprise)
             reseller_id: Optional reseller who owns this client
             company: Optional company name
@@ -107,6 +107,24 @@ class ProvisioningEngine:
             ProvisioningResult with all created resources
         """
         result = ProvisioningResult()
+
+        # Input validation
+        import re
+        if not name or len(name.strip()) < 2:
+            raise ProvisioningError("Name must be at least 2 characters")
+        if len(name) > 100:
+            raise ProvisioningError("Name must be at most 100 characters")
+        if not re.match(r'^[^@]+@[^@]+\.[^@]+$', email):
+            raise ProvisioningError("Invalid email format")
+        if len(admin_password) < 8:
+            raise ProvisioningError("Password must be at least 8 characters")
+        if plan_id not in ("free", "starter", "pro", "enterprise"):
+            raise ProvisioningError(f"Invalid plan: {plan_id}")
+        if industry and industry not in (
+            "healthcare", "finance", "ecommerce", "education", "technology",
+            "real_estate", "marketing", "legal", "manufacturing", "other",
+        ):
+            raise ProvisioningError(f"Invalid industry: {industry}")
 
         # Step 1: Create client record
         try:

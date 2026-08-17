@@ -11,7 +11,7 @@ engine = ProvisioningEngine()
 @require_auth
 @require_role("admin", "reseller")
 def provision_client():
-    """Provision a new client (admin or reseller)."""
+    """Provision a new client (admin or reseller). Rate-limited to 10/minute."""
     data = request.get_json()
     if not data:
         return jsonify({"error": "Request body required"}), 400

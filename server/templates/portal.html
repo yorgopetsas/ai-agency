@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}Client Portal — {{ brand_name | default('AI Agency') }}{% endblock %}
+
+{% block extra_style %}
+.portal-hero { background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: #fff; padding: 2rem; border-radius: 12px; margin-bottom: 1.5rem; }
+.portal-hero h2 { margin: 0; font-weight: 700; }
+.portal-hero p { opacity: 0.85; margin: 0.25rem 0 0; }
+.usage-bar { height: 10px; border-radius: 5px; background: #e9ecef; overflow: hidden; }
+.usage-bar-fill { height: 100%; border-radius: 5px; transition: width 0.4s; }
+.stat-mini { text-align: center; padding: 1rem; }
+.stat-mini .num { font-size: 1.8rem; font-weight: 700; color: var(--primary); }
+.stat-mini .lbl { font-size: 0.8rem; color: #666; }
+.brand-preview-box { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; min-height: 100px; }
+.swatch { display: inline-block; width: 20px; height: 20px; border-radius: 4px; border: 1px solid #ccc; vertical-align: middle; margin-right: 4px; }
+{% endblock %}
+
+{% block content %}
+<!-- Login form (shown when not authenticated) -->
+<div id="login-view">
+  <div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+      <div class="card">
+        <div class="card-header bg-primary text-white"><h5 class="mb-0">Client Login</h5></div>
+        <div class="card-body">
+          <form id="login-form" onsubmit="doLogin(event)">
+            <div class="mb-3"><label class="form-label">Email</label><input class="form-control" id="login-email" type="email" required></div>
+            <div class="mb-3"><label class="form-label">Password</label><input class="form-control" id="login-pass" type="password" required></div>
+            <div class="text-danger mb-3 d-none" id="login-error"></div>
+            <button class="btn btn-primary w-100" type="submit">Sign In</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Portal dashboard (hidden until login) -->
+<div id="portal-view" class="d-none">
+
+  <!-- Hero -->
+  <div class="portal-hero">
+    <h2 id="portal-welcome">Welcome</h2>
+    <p id="portal-plan-line">Plan: —</p>
+  </div>
+
+  <!-- Quick stats -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card stat-mini"><div class="num" id="stat-tasks-used">0</div><div class="lbl">Tasks Used</div></div></div>
+    <div class="col-md-3"><div class="card stat-mini"><div class="num" id="stat-tasks-limit">0</div><div class="lbl">Tasks Limit</div></div></div>
+    <div class="col-md-3"><div class="card stat-mini"><div class="num" id="stat-api-used">0</div><div class="lbl">API Calls</div></div></div>
+    <div class="col-md-3"><div class="card stat-mini"><div class="num" id="stat-users">0</div><div class="lbl">Team Members</div></div></div>
+  </div>
+
+  <!-- Usage bars -->
+  <div class="card mb-4">
+    <div class="card-header"><h6 class="mb-0">Usage This Period</h6></div>
+    <div class="card-body" id="usage-bars">
+      <p class="text-muted">Loading...</p>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- Branding preview -->
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header"><h6 class="mb-0">Your Branding</h6></div>
+        <div class="card-body">
+          <div class="row mb-2">
+            <div class="col-6"><span class="swatch" id="sw-p"></span> Primary: <span id="br-p">-</span></div>
+            <div class="col-6"><span class="swatch" id="sw-s"></span> Secondary: <span id="br-s">-</span></div>
+          </div>
+          <div class="row mb-2">
+            <div class="col-6"><span class="swatch" id="sw-a"></span> Accent: <span id="br-a">-</span></div>
+            <div class="col-6">Theme: <span id="br-theme">-</span></div>
+          </div>
+          <div class="mb-1">Font: <span id="br-font">-</span></div>
+          <div class="mb-1">Domain: <span id="br-domain">-</span></div>
+          <hr>
+          <div class="brand-preview-box" id="brand-preview">
+            <p class="mb-0 text-muted">Branding preview</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Account info -->
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header"><h6 class="mb-0">Account</h6></div>
+        <div class="card-body">
+          <div class="mb-2"><strong>Name:</strong> <span id="acct-name">-</span></div>
+          <div class="mb-2"><strong>Email:</strong> <span id="acct-email">-</span></div>
+          <div class="mb-2"><strong>Company:</strong> <span id="acct-company">-</span></div>
+          <div class="mb-2"><strong>Industry:</strong> <span id="acct-industry">-</span></div>
+          <div class="mb-2"><strong>Status:</strong> <span id="acct-status" class="badge bg-success">-</span></div>
+          <div class="mb-2"><strong>Client ID:</strong> <code id="acct-id">-</code></div>
+          <hr>
+          <button class="btn btn-outline-primary btn-sm" onclick="showChangePassword()">Change Password</button>
+          <div id="change-pw-form" class="mt-3 d-none">
+            <input class="form-control mb-2" id="new-pw" type="password" placeholder="New password">
+            <button class="btn btn-primary btn-sm" onclick="changePassword()">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:11">
+  <div id="portal-toast" class="toast align-items-center text-bg-success border-0" role="alert">
+    <div class="d-flex"><div class="toast-body" id="toast-msg"></div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const API = '/api';
+let token = localStorage.getItem('portal_token');
+let myClientId = null;
+
+function toast(m) { document.getElementById('toast-msg').textContent = m; new bootstrap.Toast(document.getElementById('portal-toast')).show(); }
+async function api(p, o={}) { const r = await fetch(API+p, {headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'}, ...o}); const d = await r.json(); if(!r.ok) throw new Error(d.error||'Failed'); return d; }
+
+async function doLogin(e) {
+  e.preventDefault();
+  const errEl = document.getElementById('login-error');
+  errEl.classList.add('d-none');
+  try {
+    const d = await api('/auth/login', {method:'POST', body:JSON.stringify({email:document.getElementById('login-email').value, password:document.getElementById('login-pass').value})});
+    token = d.access_token;
+    localStorage.setItem('portal_token', token);
+    loadPortal();
+  } catch(e) { errEl.textContent = e.message; errEl.classList.remove('d-none'); }
+}
+
+async function loadPortal() {
+  try {
+    const me = await api('/auth/me');
+    const user = me.user || me;
+    myClientId = user.client_id;
+
+    if (!myClientId) {
+      // Admin — show message
+      document.getElementById('portal-view').innerHTML = '<div class="alert alert-info">Admin account — use the <a href="/dashboard">Whitelabel Dashboard</a> instead.</div>';
+      document.getElementById('login-view').classList.add('d-none');
+      document.getElementById('portal-view').classList.remove('d-none');
+      return;
+    }
+
+    // Load client data, branding, plan in parallel
+    const [clientData, brandingData, planData] = await Promise.all([
+      api(`/clients/${myClientId}`).catch(() => null),
+      api(`/branding/${myClientId}`).catch(() => null),
+      api(`/billing/clients/${myClientId}`).catch(() => null),
+    ]);
+
+    const client = clientData?.client || clientData;
+    const branding = brandingData?.branding;
+    const planInfo = planData;
+
+    // Show portal
+    document.getElementById('login-view').classList.add('d-none');
+    document.getElementById('portal-view').classList.remove('d-none');
+
+    // Hero
+    document.getElementById('portal-welcome').textContent = `Welcome, ${client?.name || user.name}`;
+    document.getElementById('portal-plan-line').textContent = `Plan: ${planInfo?.plan_id || 'free'} · ${client?.company || ''}`;
+
+    // Account
+    document.getElementById('acct-name').textContent = client?.name || '-';
+    document.getElementById('acct-email').textContent = client?.email || '-';
+    document.getElementById('acct-company').textContent = client?.company || '-';
+    document.getElementById('acct-industry').textContent = client?.industry || '-';
+    document.getElementById('acct-status').textContent = client?.status || 'active';
+    document.getElementById('acct-id').textContent = myClientId;
+
+    // Branding
+    if (branding) {
+      document.getElementById('br-p').textContent = branding.primary_color;
+      document.getElementById('sw-p').style.background = branding.primary_color;
+      document.getElementById('br-s').textContent = branding.secondary_color;
+      document.getElementById('sw-s').style.background = branding.secondary_color;
+      document.getElementById('br-a').textContent = branding.accent_color;
+      document.getElementById('sw-a').style.background = branding.accent_color;
+      document.getElementById('br-theme').textContent = branding.theme;
+      document.getElementById('br-font').textContent = branding.font_family;
+      document.getElementById('br-domain').textContent = branding.custom_domain || '(default)';
+      const preview = document.getElementById('brand-preview');
+      preview.style.background = branding.primary_color;
+      preview.style.color = '#fff';
+      preview.style.fontFamily = branding.font_family;
+      preview.innerHTML = `<h5 style="margin:0">${branding.welcome_message || 'Welcome!'}</h5><small>${branding.footer_text || ''}</small>`;
+    }
+
+    // Usage
+    const usageData = await api(`/billing/clients/${myClientId}/summary`).catch(() => null);
+    if (usageData && usageData.usage) {
+      const u = usageData.usage;
+      document.getElementById('stat-tasks-used').textContent = u.tasks?.used || 0;
+      document.getElementById('stat-tasks-limit').textContent = u.tasks?.unlimited ? '∞' : (u.tasks?.limit || 0);
+      document.getElementById('stat-api-used').textContent = u.api_calls?.used || 0;
+      document.getElementById('stat-users').textContent = u.users?.used || 0;
+
+      const barsHtml = Object.entries(u).map(([metric, info]) => {
+        const pct = info.unlimited ? 0 : Math.min(100, info.percentage || 0);
+        const color = pct > 80 ? '#dc3545' : pct > 50 ? '#ffc107' : '#28a745';
+        const limitStr = info.unlimited ? '∞' : info.limit;
+        return `<div class="mb-3">
+          <div class="d-flex justify-content-between mb-1"><span>${metric}</span><span>${info.used} / ${limitStr}</span></div>
+          <div class="usage-bar"><div class="usage-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        </div>`;
+      }).join('');
+      document.getElementById('usage-bars').innerHTML = barsHtml;
+    }
+
+  } catch(e) {
+    // Token invalid — show login
+    localStorage.removeItem('portal_token');
+    token = null;
+  }
+}
+
+function showChangePassword() { document.getElementById('change-pw-form').classList.toggle('d-none'); }
+
+async function changePassword() {
+  try {
+    await api('/auth/password', {method:'PUT', body:JSON.stringify({new_password: document.getElementById('new-pw').value})});
+    toast('Password updated!');
+    document.getElementById('change-pw-form').classList.add('d-none');
+  } catch(e) { toast('Error: ' + e.message); }
+}
+
+// Auto-load if token exists
+if (token) loadPortal();
+</script>
+{% endblock %}

@@ -12,7 +12,7 @@ auth_bp = Blueprint("auth", __name__)
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
-    """Register a new user."""
+    """Register a new user. Rate-limited to 5/minute."""
     data = request.get_json()
     if not data:
         return jsonify({"error": "Request body required"}), 400

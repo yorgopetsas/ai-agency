@@ -5,11 +5,13 @@ Port: 5001
 Run: python3 -m server.app
 """
 
-from flask import Flask, render_template, jsonify, request, abort
+from flask import Flask, render_template, jsonify, request, abort, g
 from pathlib import Path
 import os
 import json
 import sys
+import time
+import logging
 
 # Load secrets from .env in the project root (before importing services
 # that read env vars at import time). .env is gitignored.
@@ -35,9 +37,15 @@ from server.routes.branding import branding_bp
 from server.routes.billing import billing_bp
 from server.routes.provisioning import provisioning_bp
 from server.routes.whitelabel import whitelabel_bp
+from server.routes.portal import portal_bp
 from server.services.automation import automation_service
 from server.scheduler import init_scheduler
 from auth.middleware import init_auth
+
+# CORS & Rate Limiting
+from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 # Create Flask app
 app = Flask(
@@ -50,6 +58,32 @@ app = Flask(
 app.config['SERVER_DIR'] = Path(__file__).parent
 app.config['DATA_DIR'] = app.config['SERVER_DIR'] / "data"
 app.config['WEBSITE_DIR'] = Path(__file__).parent.parent / "accounts" / "internal" / "website"
+
+# CORS — allow all origins in dev, restrict in production
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+
+# Rate limiter — in-memory for dev, use Redis in production
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    default_limits=["200 per minute"],
+    storage_uri="memory://",
+)
+
+# Request timing middleware
+@app.before_request
+def start_timer():
+    g.start_time = time.time()
+
+@app.after_request
+def add_timing_header(response):
+    if hasattr(g, "start_time"):
+        elapsed = time.time() - g.start_time
+        response.headers["X-Response-Time"] = f"{elapsed:.4f}s"
+    return response
+
+# Logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 # Ensure data directories exist
 app.config['DATA_DIR'].mkdir(exist_ok=True)
@@ -81,6 +115,7 @@ app.register_blueprint(branding_bp)
 app.register_blueprint(billing_bp)
 app.register_blueprint(provisioning_bp)
 app.register_blueprint(whitelabel_bp)
+app.register_blueprint(portal_bp)
 app.register_blueprint(news_bp, url_prefix='/api')
 app.register_blueprint(workflow_bp, url_prefix='/api')
 app.register_blueprint(admin_bp, url_prefix='/api')
