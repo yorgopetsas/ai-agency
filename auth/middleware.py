@@ -11,7 +11,7 @@ from .password import hash_api_key
 # Auth mode: "jwt" (default), "api_key", "both"
 AUTH_MODE = os.environ.get("AUTH_MODE", "both")
 
-# Exempt routes that don't require auth
+# Exempt routes that don't require auth (exact match only)
 AUTH_EXEMPT_ROUTES = {
     "/api/auth/login",
     "/api/auth/register",
@@ -19,8 +19,7 @@ AUTH_EXEMPT_ROUTES = {
     "/api/auth/me",
     "/api/news",
     "/api/health",
-    "/",
-    "/news/",
+    "/admin",
 }
 
 
@@ -87,15 +86,7 @@ def is_auth_required() -> bool:
     """Check if auth is required for current route."""
     if AUTH_MODE == "none":
         return False
-    path = request.path
-    # Check exact matches
-    if path in AUTH_EXEMPT_ROUTES:
-        return False
-    # Check prefix matches
-    for exempt in AUTH_EXEMPT_ROUTES:
-        if path.startswith(exempt.rstrip("/")):
-            return False
-    return True
+    return request.path not in AUTH_EXEMPT_ROUTES
 
 
 def require_auth(f):
@@ -104,7 +95,7 @@ def require_auth(f):
     def decorated(*args, **kwargs):
         if not is_auth_required():
             return f(*args, **kwargs)
-        if not authenticate_request():
+        if not g.get("user"):
             return jsonify({"error": "Authentication required"}), 401
         return f(*args, **kwargs)
     return decorated
@@ -117,7 +108,7 @@ def require_role(*roles):
         def decorated(*args, **kwargs):
             if not is_auth_required():
                 return f(*args, **kwargs)
-            if not authenticate_request():
+            if not g.get("user"):
                 return jsonify({"error": "Authentication required"}), 401
             if g.user.role not in roles:
                 return jsonify({"error": "Insufficient permissions"}), 403
@@ -133,7 +124,7 @@ def require_scope(*scopes):
         def decorated(*args, **kwargs):
             if not is_auth_required():
                 return f(*args, **kwargs)
-            if not authenticate_request():
+            if not g.get("user"):
                 return jsonify({"error": "Authentication required"}), 401
             if g.auth_method == "api_key":
                 key_scopes = getattr(g, "api_key_scopes", [])
