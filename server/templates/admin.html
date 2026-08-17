@@ -116,6 +116,58 @@
     </div>
 </div>
 
+<!-- Social Media Status -->
+<div class="card mb-4">
+    <div class="card-header bg-success text-white">
+        <h5 class="mb-0">📱 Social Media Platforms</h5>
+    </div>
+    <div class="card-body">
+        <div id="social-platforms">
+            <p class="text-muted">Loading...</p>
+        </div>
+        <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-success btn-sm" id="refresh-social-btn">
+                🔄 Refresh Status
+            </button>
+            <button class="btn btn-outline-primary btn-sm" id="test-moltbook-btn">
+                🦞 Test Moltbook
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Social Media Queue -->
+<div class="card mb-4">
+    <div class="card-header bg-warning text-dark">
+        <h5 class="mb-0">📤 Social Media Queue</h5>
+    </div>
+    <div class="card-body">
+        <div id="social-queue">
+            <p class="text-muted">Loading...</p>
+        </div>
+        <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-warning btn-sm" id="process-queue-btn">
+                ▶️ Process Queue
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" id="refresh-queue-btn">
+                🔄 Refresh
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Social Media History -->
+<div class="card mb-4">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0">📊 Social Media History</h5>
+    </div>
+    <div class="card-body">
+        <div id="social-history">
+            <p class="text-muted">Loading...</p>
+        </div>
+    </div>
+</div>
+
 <div class="row mt-4">
     <div class="col-12 text-center">
         <a href="/" class="btn btn-outline-secondary">
@@ -447,5 +499,221 @@ document.getElementById('run-automation-btn').addEventListener('click', async ()
 
 loadAutomationStatus();
 loadLLMStatus();
+loadSocialPlatforms();
+loadSocialQueue();
+loadSocialHistory();
+
+// ============================================================
+// Social Media Functions
+// ============================================================
+
+// Load social platforms
+async function loadSocialPlatforms() {
+    const container = document.getElementById('social-platforms');
+    
+    try {
+        const response = await fetch(`${API_BASE}/social/platforms`);
+        const data = await response.json();
+        
+        if (!data.platforms || data.platforms.length === 0) {
+            container.innerHTML = '<p class="text-muted small mb-0">No platforms configured</p>';
+            return;
+        }
+        
+        const rows = data.platforms.map(p => {
+            const statusBadge = p.authenticated 
+                ? '<span class="badge bg-success">Connected</span>'
+                : '<span class="badge bg-warning">Not Connected</span>';
+            
+            const features = (p.features || []).map(f => 
+                `<span class="badge bg-light text-dark me-1">${f}</span>`
+            ).join('');
+            
+            return `
+                <tr>
+                    <td><strong>${p.platform || p.name || 'Unknown'}</strong></td>
+                    <td>${statusBadge}</td>
+                    <td><small class="text-muted">${p.rate_limit || 'N/A'}</small></td>
+                    <td>${features}</td>
+                </tr>
+            `;
+        }).join('');
+        
+        container.innerHTML = `
+            <table class="table table-sm small mb-0">
+                <thead><tr><th>Platform</th><th>Status</th><th>Rate Limit</th><th>Features</th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table>`;
+    } catch (error) {
+        container.innerHTML = '<p class="text-danger small mb-0">Error loading platforms</p>';
+    }
+}
+
+// Load social queue
+async function loadSocialQueue() {
+    const container = document.getElementById('social-queue');
+    
+    try {
+        const response = await fetch(`${API_BASE}/social/queue`);
+        const data = await response.json();
+        
+        const stats = data.stats || {};
+        const posts = data.posts || [];
+        
+        let html = `<div class="row mb-3">
+            <div class="col-md-3"><strong class="text-primary">${stats.total || 0}</strong> Total</div>
+            <div class="col-md-3"><strong class="text-warning">${stats.pending || 0}</strong> Pending</div>
+            <div class="col-md-3"><strong class="text-success">${stats.published || 0}</strong> Published</div>
+            <div class="col-md-3"><strong class="text-danger">${stats.failed || 0}</strong> Failed</div>
+        </div>`;
+        
+        if (posts.length === 0) {
+            html += '<p class="text-muted small mb-0">No posts in queue</p>';
+        } else {
+            html += '<ul class="list-group list-group-flush">';
+            posts.forEach(post => {
+                const statusClass = {
+                    'pending': 'secondary',
+                    'queued': 'warning',
+                    'publishing': 'info',
+                    'published': 'success',
+                    'failed': 'danger',
+                    'retry': 'warning'
+                }[post.status] || 'secondary';
+                
+                html += `<li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                    <div>
+                        <span class="badge bg-${statusClass} me-2">${post.status}</span>
+                        <span class="me-2"><strong>${post.platform}</strong></span>
+                        <span class="text-muted">${(post.title || '').substring(0, 50)}...</span>
+                    </div>
+                    <div>
+                        ${post.status === 'queued' ? `<button class="btn btn-sm btn-outline-danger" onclick="cancelPost('${post.id}')">Cancel</button>` : ''}
+                    </div>
+                </li>`;
+            });
+            html += '</ul>';
+        }
+        
+        container.innerHTML = html;
+    } catch (error) {
+        container.innerHTML = '<p class="text-danger small mb-0">Error loading queue</p>';
+    }
+}
+
+// Load social history
+async function loadSocialHistory() {
+    const container = document.getElementById('social-history');
+    
+    try {
+        const response = await fetch(`${API_BASE}/social/history?limit=10`);
+        const data = await response.json();
+        
+        const history = data.history || [];
+        
+        if (history.length === 0) {
+            container.innerHTML = '<p class="text-muted small mb-0">No published posts yet</p>';
+            return;
+        }
+        
+        const rows = history.map(h => {
+            const date = h.published_at ? new Date(h.published_at).toLocaleString() : 'N/A';
+            return `
+                <tr>
+                    <td><span class="badge bg-success">${h.platform}</span></td>
+                    <td>${(h.title || '').substring(0, 40)}</td>
+                    <td>${date}</td>
+                    <td>${h.post_url ? `<a href="${h.post_url}" target="_blank" class="small">View</a>` : '—'}</td>
+                </tr>
+            `;
+        }).join('');
+        
+        container.innerHTML = `
+            <table class="table table-sm small mb-0">
+                <thead><tr><th>Platform</th><th>Title</th><th>Published</th><th>Link</th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table>`;
+    } catch (error) {
+        container.innerHTML = '<p class="text-danger small mb-0">Error loading history</p>';
+    }
+}
+
+// Cancel a queued post
+async function cancelPost(postId) {
+    try {
+        await fetch(`${API_BASE}/social/queue/${postId}`, { method: 'DELETE' });
+        showAlert('Post cancelled', 'secondary');
+        loadSocialQueue();
+    } catch (error) {
+        showAlert('Error cancelling post: ' + error.message, 'danger');
+    }
+}
+
+// Process queue button
+document.getElementById('process-queue-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('process-queue-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
+    
+    try {
+        const response = await fetch(`${API_BASE}/social/queue/process`, { method: 'POST' });
+        const result = await response.json();
+        
+        const successful = (result.results || []).filter(r => r.result?.success);
+        const failed = (result.results || []).filter(r => !r.result?.success);
+        
+        showAlert(`Processed ${result.processed || 0} posts: ${successful.length} published, ${failed.length} failed`, 
+            failed.length > 0 ? 'warning' : 'success');
+        
+        loadSocialQueue();
+        loadSocialHistory();
+    } catch (error) {
+        showAlert('Error processing queue: ' + error.message, 'danger');
+    }
+    
+    btn.disabled = false;
+    btn.innerHTML = '▶️ Process Queue';
+});
+
+// Refresh queue button
+document.getElementById('refresh-queue-btn').addEventListener('click', () => {
+    loadSocialQueue();
+    loadSocialHistory();
+});
+
+// Refresh social platforms button
+document.getElementById('refresh-social-btn').addEventListener('click', () => {
+    loadSocialPlatforms();
+});
+
+// Test Moltbook button
+document.getElementById('test-moltbook-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('test-moltbook-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Testing...';
+    
+    try {
+        const response = await fetch(`${API_BASE}/social/platforms/moltbook/test`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                title: 'Test Post from AI Agency',
+                content: 'Hello Moltbook! This is a test post from the AI Agency system. 🤖'
+            })
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            showAlert('Moltbook test post published! 🦞', 'success');
+        } else {
+            showAlert('Moltbook test failed: ' + (result.error || 'Unknown error'), 'danger');
+        }
+    } catch (error) {
+        showAlert('Error testing Moltbook: ' + error.message, 'danger');
+    }
+    
+    btn.disabled = false;
+    btn.innerHTML = '🦞 Test Moltbook';
+});
 </script>
 {% endblock %}
