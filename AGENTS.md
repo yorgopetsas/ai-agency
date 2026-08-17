@@ -39,14 +39,16 @@ git add -A && git commit && git push
 - `server/data/` is gitignored (runtime data, not committed).
 
 ## Public site (Phase 3: static GitHub Pages, hybrid)
-- The public site is **static** and hosted on GitHub Pages at the custom domain
-  **`https://amanita.barcelona/`** (repo `yorgopetsas/ai-agency-site`, Pages
-  custom domain `amanita.barcelona`, DNS via Cloudflare — apex A records to
-  GitHub's 185.199.108-111 and `www` CNAME to `yorgopetsas.github.io`).
+- The public site is **static** and hosted on GitHub Pages at
+  **`https://amanita.barcelona/news/`** — the root domain serves the
+  `amanita-solutions` repo (Vite/React app); the news site lives under `/news/`.
+- Deploy chain: `publish_site.py` builds + pushes to `yorgopetsas/ai-agency-site`
+  (source of truth for the news build), then triggers the `amanita-solutions`
+  deploy CI which clones `ai-agency-site` and copies it into `dist/news/` before
+  publishing to `gh-pages`. Custom domain `amanita.barcelona` → `amanita-solutions`.
 - `server/services/site_builder.py` generates the static site (index, per-article
-  pages, images, `feed.xml`, `sitemap.xml`, and the `CNAME` file) into
-  `server/data/site_build/` using relative links. The `CNAME` file keeps the
-  custom domain registered across redeploys.
+  pages, images, `feed.xml`, `sitemap.xml`) into `server/data/site_build/` using
+  relative links — self-contained, works at any nesting depth.
 - Site config: `server/config/site_config.json` (`site_url`, `site_title`, `repo`, ...).
 - Every `publisher.publish()` rebuilds the static site automatically.
 - To deploy the latest build to GitHub Pages:

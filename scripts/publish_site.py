@@ -77,6 +77,18 @@ def main() -> int:
     else:
         print("No changes to push")
 
+    # 5. Trigger amanita-solutions deploy (it pulls the latest ai-agency-site
+    #    into dist/news/ on each CI run, so the custom domain picks up changes).
+    try:
+        subprocess.run(
+            ["gh", "api", "repos/yorgopetsas/amanita-solutions/actions/workflows/deploy-pages.yml/dispatches",
+             "-f", "ref=main"],
+            check=True, capture_output=True,
+        )
+        print("Triggered amanita-solutions deploy")
+    except Exception as e:
+        print(f"Warning: could not trigger amanita-solutions deploy: {e}")
+
     return 0
 
 
