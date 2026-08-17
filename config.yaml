@@ -105,6 +105,12 @@ skills:
     - "containerize-docker"
     - "generate-website"
     - "website-tests"
+  social:
+    - "moltbook"
+    - "bluesky"
+    - "mastodon"
+    - "telegram"
+    - "reddit"
 
 # --------------------------------------------------------
 # RAG + MCP (Phase 4)
@@ -163,6 +169,12 @@ orchestration:
     - name: "create_website"
       agents: ["org", "research", "designer", "developer", "reviewer"]
       steps: 5
+    - name: "social_publish"
+      agents: ["writer"]
+      steps: 3
+    - name: "social_campaign"
+      agents: ["org", "writer", "analyst"]
+      steps: 5
 
   human_oversight:
     level: "medium"  # none, low, medium, high, full
@@ -192,6 +204,60 @@ scheduler:
   celery:
     broker: "redis://localhost:6379"
     backend: "redis://localhost:6379"
+
+# --------------------------------------------------------
+# SOCIAL MEDIA (Phase 9)
+# --------------------------------------------------------
+social_media:
+  enabled: true
+  default_platforms:
+    - "moltbook"
+    - "bluesky"
+    - "mastodon"
+    - "telegram"
+  content_tone:
+    news: "casual"
+    agency: "professional"
+  platforms:
+    moltbook:
+      enabled: true
+      requires_auth: true
+      auth_type: "api_key"
+      submolts:
+        - "ai-news"
+        - "aitechnology"
+        - "buildinpublic"
+      env_keys: ["MOLTBOOK_API_KEY"]
+    bluesky:
+      enabled: true
+      requires_auth: true
+      auth_type: "app_password"
+      env_keys: ["BLUESKY_HANDLE", "BLUESKY_APP_PASSWORD"]
+    mastodon:
+      enabled: true
+      requires_auth: true
+      auth_type: "token"
+      env_keys: ["MASTODON_ACCESS_TOKEN", "MASTODON_API_BASE"]
+    telegram:
+      enabled: true
+      requires_auth: true
+      auth_type: "bot_token"
+      env_keys: ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"]
+    reddit:
+      enabled: false  # Requires OAuth setup
+      requires_auth: true
+      auth_type: "oauth2"
+      subreddits:
+        - "artificial"
+        - "MachineLearning"
+        - "singularity"
+      env_keys: ["REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET", "REDDIT_USER_AGENT", "REDDIT_USERNAME", "REDDIT_PASSWORD"]
+  schedule:
+    enabled: true
+    interval_minutes: 60
+    max_posts_per_day: 20
+    retry_attempts: 3
+    retry_delay_minutes: 30
 
 # --------------------------------------------------------
 # DESIGNER TOOLS (Stage 2)

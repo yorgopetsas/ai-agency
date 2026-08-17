@@ -18,16 +18,24 @@ git add -A && git commit && git push
 - Sensitive tokens live in the project root `.env` file (gitignored), loaded by
   `server/app.py` via python-dotenv at startup. Keys are read with `os.environ.get(...)`.
 - Providers that check `.env`: `OPENAI_API_KEY`, `GEMINI_API_KEY`, `GROQ_API_KEY`,
-  `OPENROUTER_API_KEY`, `PEXELS_API_KEY`, `TELEGRAM_BOT_TOKEN`.
+  `OPENROUTER_API_KEY`, `PEXELS_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`.
+- Social media keys: `MOLTBOOK_API_KEY`, `BLUESKY_HANDLE`, `BLUESKY_APP_PASSWORD`,
+  `MASTODON_ACCESS_TOKEN`, `MASTODON_API_BASE`, `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`,
+  `REDDIT_USER_AGENT`, `REDDIT_USERNAME`, `REDDIT_PASSWORD`.
 - `.env.example` lists all keys (commit-safe, placeholders only).
 
 ## Project layout
 - `server/` — Flask API (port 5001), routes, services, templates
 - `server/services/` — storage.py (locked JSON + per-article store), llm.py
   (multi-provider router), rating.py, automation.py, research.py, writer.py,
-  publisher.py, images.py
+  publisher.py, images.py, social/ (Phase 9: social media)
+- `server/services/social/` — content_generator.py, scheduler.py, manager.py, platforms/
+- `server/routes/social.py` — API routes for social media management
 - `server/config/` — automation_config.json, llm_config.json
 - `server/scheduler.py` — APScheduler 6-hour automation
+- `agent_framework.py` — 8 agent roles including SOCIAL
+- `skill_runner.py` — skills engine with social media skills
+- `config.yaml` — unified configuration including social platforms
 
 ## Storage model
 - Articles are stored as **one JSON file per article** under `server/data/articles/`
@@ -59,3 +67,12 @@ git add -A && git commit && git push
 - Automation (RSS → research → rate → write → publish) runs locally (Ollama + hosted
   LLMs via the router); only the output site is pushed. The Flask app stays as the
   private admin/dev interface on port 5001.
+
+## Social Media (Phase 9)
+- Social media content agent publishes articles to multiple platforms.
+- Platforms: Moltbook, Bluesky, Mastodon, Telegram, Reddit (free tier).
+- Content generator rewrites articles for each platform's format and tone.
+- Scheduler manages post queue, rate limits, and retries.
+- API routes: `/api/social/platforms`, `/api/social/queue`, `/api/social/publish`.
+- Moltbook is an AI agent-specific social network (moltbook.com) — register agent → get API key.
+- Platform configs in `config.yaml` under `social_media.platforms`.

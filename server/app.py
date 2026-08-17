@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from server.routes.news import news_bp
 from server.routes.workflow import workflow_bp
 from server.routes.admin import admin_bp
+from server.routes.social import social_bp
 from server.services.automation import automation_service
 from server.scheduler import init_scheduler
 
@@ -68,6 +69,7 @@ article_store = ArticleStore(data_dir=app.config['DATA_DIR'])
 app.register_blueprint(news_bp, url_prefix='/api')
 app.register_blueprint(workflow_bp, url_prefix='/api')
 app.register_blueprint(admin_bp, url_prefix='/api')
+app.register_blueprint(social_bp, url_prefix='/api')
 
 
 # ============================================================

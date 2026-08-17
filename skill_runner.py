@@ -158,6 +158,24 @@ CONFIGURED_SKILLS = {
         "category": "website-tests",
         "skill": "website-tests",
         "note": "Python smoke tests + Playwright browser tests for generated websites"
+    },
+    "social_content_generator": {
+        "library": "social",
+        "category": "content",
+        "skill": "content_generator",
+        "note": "Generates platform-specific social media content from articles"
+    },
+    "social_publisher": {
+        "library": "social",
+        "category": "publishing",
+        "skill": "publisher",
+        "note": "Publishes content to Moltbook, Bluesky, Mastodon, Telegram, Reddit"
+    },
+    "social_scheduler": {
+        "library": "social",
+        "category": "scheduling",
+        "skill": "scheduler",
+        "note": "Manages post queue, rate limits, retries, and optimal timing"
     }
 }
 

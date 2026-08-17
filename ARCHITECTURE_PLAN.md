@@ -275,12 +275,67 @@ Stage 2 = Part 2 / Advanced Features:
 
 ---
 
-## Phase 8: Website Creation (Planned)
+## Phase 8: Website Creation (Completed)
 
 - [x] Website folder created: accounts/internal/website/
 - [x] UI_UX_MAX_PRO skill configured for DESIGNER
-- [ ] First website generation workflow
-- [ ] Playwright tests
+- [x] First website generation workflow
+- [x] Playwright tests
+
+---
+
+## Phase 9: Social Media Content Agent (In Progress)
+
+### Phase 9: Social Media Automation
+- [x] Content generator - rewrites articles for each platform
+- [x] Moltbook publisher - AI agent social network (free REST API)
+- [x] Bluesky publisher - AT Protocol (free app password)
+- [x] Mastodon publisher - federated social network (free token)
+- [x] Telegram publisher - messaging platform (bot token)
+- [x] Reddit publisher - link aggregation (OAuth, needs client ID)
+- [x] Social scheduler - queue, rate limits, retries
+- [x] Social media manager - orchestrates generation + publishing
+- [x] API routes for social media management
+- [ ] Admin dashboard social media controls
+- [ ] Analytics tracker
+- [ ] AI agent directory registration (moltbook.com, claw.direct)
+
+**Social Media Architecture:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  PHASE 9: SOCIAL MEDIA CONTENT AGENT                        │
+├─────────────────────────────────────────────────────────────┤
+│  Content Generator (LLM rewrites per platform)              │
+│  ├── Moltbook (AI agent network, REST API)                  │
+│  ├── Bluesky (AT Protocol, app password)                    │
+│  ├── Mastodon (federated, token auth)                       │
+│  ├── Telegram (bot token, channels)                         │
+│  └── Reddit (OAuth, subreddits)                             │
+├─────────────────────────────────────────────────────────────┤
+│  Scheduler                                                  │
+│  ├── Post queue (JSON files)                                │
+│  ├── Rate limiting (per platform)                           │
+│  ├── Retry logic (exponential backoff)                      │
+│  └── Optimal timing (peak hours)                            │
+├─────────────────────────────────────────────────────────────┤
+│  Manager                                                    │
+│  ├── Content plan generation                                │
+│  ├── Platform selection                                     │
+│  ├── Immediate or scheduled publishing                      │
+│  └── History and analytics                                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Platform Tiers:**
+- Tier 1 (Free, no approval): Moltbook, Bluesky, Mastodon, Telegram
+- Tier 2 (Free, OAuth): Reddit, LinkedIn
+- Tier 3 (Needs approval): Threads, Instagram, Facebook, YouTube
+
+**Key Files:**
+- `server/services/social/` - Content generator, platform publishers, scheduler
+- `server/routes/social.py` - API routes
+- `config.yaml` - Platform configuration
+- `agent_framework.py` - SOCIAL role added
 
 ---
 
@@ -297,21 +352,22 @@ Stage 2 = Part 2 / Advanced Features:
 - [x] MCP Servers - COMPLETE
 - [x] Approval System - COMPLETE
 - [x] Tests Framework - COMPLETE
-- [ ] Daily News Workflow - PLANNED
+- [x] Phase 8: Website Creation - COMPLETE
+- [ ] Phase 9: Social Media Content Agent - IN PROGRESS
 - [ ] Stage 2: Advanced - PLANNED
 
 ---
 
 ## Beta Version Complete
 
-All 7 phases implemented. System ready for testing.
+All 8 phases implemented. System ready for testing.
 
 ```
 ai_agency/
 ├── integrator.py       # Phase 7: Integration Layer
 ├── config.yaml       # Phase 7: Unified Configuration
 ├── main.py          # Phase 7: CLI Entry Point
-├── agent_framework.py  # Phase 1: 7 Agents
+├── agent_framework.py  # Phase 1: 8 Agents (including SOCIAL)
 ├── memory.py         # Phase 2: Mem0 Memory
 ├── skill_runner.py   # Phase 3: Skills Engine
 ├── rag_pipeline.py  # Phase 4: RAG Knowledge
@@ -319,8 +375,21 @@ ai_agency/
 ├── knowledge_manager.py  # Phase 4: Per-agent Knowledge
 ├── multi_client.py  # Phase 6: Multi-tenant DB
 ├── accounts_manager.py  # Phase 6: Account Management
-└── orchestration/  # Phase 5: Workflows
-    ├── router.py, supervisor.py
-    ├── readiness.py, task_queue.py
-    └── scenarios/
+├── orchestration/  # Phase 5: Workflows
+│   ├── router.py, supervisor.py
+│   ├── readiness.py, task_queue.py
+│   └── scenarios/
+└── server/
+    └── services/
+        └── social/  # Phase 9: Social Media
+            ├── content_generator.py
+            ├── scheduler.py
+            ├── manager.py
+            └── platforms/
+                ├── base.py
+                ├── moltbook.py
+                ├── bluesky.py
+                ├── mastodon.py
+                ├── telegram.py
+                └── reddit.py
 ```

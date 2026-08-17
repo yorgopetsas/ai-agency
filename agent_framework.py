@@ -25,6 +25,7 @@ class AgentRole(Enum):
     DESIGNER = "designer"  # Designer
     ANALYST = "analyst"    # Market Analyst
     REVIEWER = "reviewer"  # Content Reviewer
+    SOCIAL = "social"      # Social Media Manager
 
 # Agent Status
 class AgentStatus(Enum):
@@ -137,6 +138,11 @@ class TaskRouter:
             "analyze": AgentRole.ANALYST,
             "review": AgentRole.REVIEWER,
             "manage": AgentRole.ORG,
+            "social": AgentRole.SOCIAL,
+            "post": AgentRole.SOCIAL,
+            "publish": AgentRole.SOCIAL,
+            "tweet": AgentRole.SOCIAL,
+            "share": AgentRole.SOCIAL,
         }
     
     def route(self, task_description: str) -> AgentRole:
