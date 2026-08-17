@@ -1,0 +1,528 @@
+openapi: 3.0.3
+info:
+  title: Amanita AI Agency — Whitelabel API
+  description: |
+    Multi-tenant whitelabel API for reselling AI agency services.
+
+    **Authentication:** All endpoints (except `/api/auth/login` and `/api/auth/register`)
+    require a Bearer token in the `Authorization` header.
+
+    **Rate Limits:** 200 requests/minute default. Auth endpoints limited to 5/minute.
+
+    **Client Isolation:** All data (RAG, knowledge, memory, social) is scoped per client.
+  version: 1.0.0
+  contact:
+    name: Amanita AI Agency
+    url: https://amanita.barcelona
+
+servers:
+  - url: http://localhost:5001
+    description: Local development
+
+tags:
+  - name: Auth
+    description: Registration, login, JWT tokens, API keys
+  - name: Resellers
+    description: Reseller hierarchy management
+  - name: Clients
+    description: Client CRUD and status
+  - name: Branding
+    description: Per-client visual branding
+  - name: Billing
+    description: Plans, quotas, usage tracking
+  - name: Provisioning
+    description: One-click client provisioning
+  - name: Social
+    description: Social media publishing
+  - name: News
+    description: News article workflow
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        name: { type: string }
+        role: { type: string, enum: [user, admin, reseller, superadmin] }
+        client_id: { type: string, nullable: true }
+        reseller_id: { type: string, nullable: true }
+        status: { type: string, enum: [active, suspended] }
+
+    Client:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        email: { type: string }
+        phone: { type: string, nullable: true }
+        company: { type: string, nullable: true }
+        industry: { type: string }
+        plan: { type: string }
+        status: { type: string }
+        reseller_id: { type: string, nullable: true }
+
+    Reseller:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        email: { type: string }
+        max_clients: { type: integer }
+        client_count: { type: integer }
+        status: { type: string }
+        tier: { type: string }
+        parent_id: { type: string, nullable: true }
+
+    Plan:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        price: { type: number }
+        billing: { type: string }
+        quotas:
+          type: object
+          properties:
+            tasks_per_month: { type: integer }
+            api_calls: { type: integer }
+            users: { type: integer }
+            storage_mb: { type: integer }
+        features: { type: array, items: { type: string } }
+
+    Branding:
+      type: object
+      properties:
+        client_id: { type: string }
+        primary_color: { type: string, example: "#6366F1" }
+        secondary_color: { type: string }
+        accent_color: { type: string }
+        font_family: { type: string }
+        theme: { type: string, enum: [light, dark, auto] }
+        custom_domain: { type: string, nullable: true }
+        welcome_message: { type: string }
+        footer_text: { type: string }
+
+    ProvisionResult:
+      type: object
+      properties:
+        success: { type: boolean }
+        client: { $ref: '#/components/schemas/Client' }
+        branding: { $ref: '#/components/schemas/Branding' }
+        plan: { type: object }
+        admin_user: { $ref: '#/components/schemas/User' }
+        steps_completed: { type: array, items: { type: string } }
+
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+
+paths:
+  # ─── Auth ───────────────────────────────────────────────
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, name]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                name: { type: string }
+                role: { type: string, enum: [user, admin], default: user }
+      responses:
+        '201': { description: User created }
+        '400': { description: Validation error }
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and get JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: { type: string }
+                  refresh_token: { type: string }
+                  user: { $ref: '#/components/schemas/User' }
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user info
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+                  authenticated: { type: boolean }
+
+  # ─── Resellers ──────────────────────────────────────────
+  /api/resellers:
+    post:
+      tags: [Resellers]
+      summary: Create a reseller
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, slug, email]
+              properties:
+                name: { type: string }
+                slug: { type: string }
+                email: { type: string }
+                phone: { type: string }
+                company: { type: string }
+                parent_id: { type: string }
+                tier: { type: string, enum: [standard, premium, enterprise] }
+                max_clients: { type: integer, default: 10 }
+      responses:
+        '201': { description: Reseller created }
+    get:
+      tags: [Resellers]
+      summary: List all resellers
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Reseller list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resellers: { type: array, items: { $ref: '#/components/schemas/Reseller' } }
+                  total: { type: integer }
+
+  /api/resellers/{reseller_id}:
+    get:
+      tags: [Resellers]
+      summary: Get reseller details
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: reseller_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Reseller details }
+        '404': { description: Not found }
+
+  /api/resellers/{reseller_id}/hierarchy:
+    get:
+      tags: [Resellers]
+      summary: Get full reseller hierarchy (tree)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: reseller_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Hierarchy tree }
+
+  # ─── Clients ────────────────────────────────────────────
+  /api/clients:
+    get:
+      tags: [Clients]
+      summary: List all clients
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: reseller_id, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string, enum: [active, suspended] } }
+        - { name: plan, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Client list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clients: { type: array, items: { $ref: '#/components/schemas/Client' } }
+                  total: { type: integer }
+    post:
+      tags: [Clients]
+      summary: Create a client directly (without provisioning)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email]
+              properties:
+                name: { type: string }
+                email: { type: string }
+                reseller_id: { type: string }
+                company: { type: string }
+                phone: { type: string }
+                industry: { type: string }
+                plan: { type: string, default: free }
+      responses:
+        '201': { description: Client created }
+
+  /api/clients/{client_id}:
+    get:
+      tags: [Clients]
+      summary: Get client details
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: client_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Client details }
+        '404': { description: Not found }
+
+  # ─── Branding ───────────────────────────────────────────
+  /api/branding/{client_id}:
+    get:
+      tags: [Branding]
+      summary: Get client branding
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: client_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Branding details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  branding: { $ref: '#/components/schemas/Branding' }
+    put:
+      tags: [Branding]
+      summary: Update client branding
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: client_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                primary_color: { type: string, example: "#6366F1" }
+                secondary_color: { type: string }
+                accent_color: { type: string }
+                font_family: { type: string }
+                theme: { type: string, enum: [light, dark, auto] }
+                custom_domain: { type: string }
+                welcome_message: { type: string }
+                footer_text: { type: string }
+      responses:
+        '200': { description: Branding updated }
+
+  /api/branding/themes:
+    get:
+      tags: [Branding]
+      summary: List available themes
+      responses:
+        '200': { description: Theme list }
+
+  /api/branding/fonts:
+    get:
+      tags: [Branding]
+      summary: List available fonts
+      responses:
+        '200': { description: Font list }
+
+  # ─── Billing ────────────────────────────────────────────
+  /api/billing/plans:
+    get:
+      tags: [Billing]
+      summary: List all plans
+      responses:
+        '200':
+          description: Plan list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plans: { type: array, items: { $ref: '#/components/schemas/Plan' } }
+
+  /api/billing/plans/{plan_id}:
+    get:
+      tags: [Billing]
+      summary: Get plan details
+      parameters:
+        - { name: plan_id, in: path, required: true, schema: { type: string, enum: [free, starter, pro, enterprise] } }
+      responses:
+        '200': { description: Plan details }
+
+  /api/billing/clients/{client_id}:
+    get:
+      tags: [Billing]
+      summary: Get client's current plan
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: client_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Client plan info }
+
+  /api/billing/clients/{client_id}/assign:
+    post:
+      tags: [Billing]
+      summary: Assign a plan to a client
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: client_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan_id]
+              properties:
+                plan_id: { type: string, enum: [free, starter, pro, enterprise] }
+                billing_cycle: { type: string, enum: [monthly, yearly], default: monthly }
+      responses:
+        '200': { description: Plan assigned }
+
+  /api/billing/clients/{client_id}/summary:
+    get:
+      tags: [Billing]
+      summary: Get usage summary
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: client_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Usage summary with limits and percentages
+
+  /api/billing/clients/{client_id}/quota/{metric}:
+    get:
+      tags: [Billing]
+      summary: Check quota for a specific metric
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: client_id, in: path, required: true, schema: { type: string } }
+        - { name: metric, in: path, required: true, schema: { type: string, enum: [tasks, api_calls, storage_mb, users] } }
+      responses:
+        '200':
+          description: Quota info (used, limit, remaining, available)
+
+  # ─── Provisioning ───────────────────────────────────────
+  /api/provisioning/provision:
+    post:
+      tags: [Provisioning]
+      summary: Provision a new client (full setup in one call)
+      description: |
+        Creates client record, default branding, billing plan, admin user,
+        and data isolation directories in one atomic operation.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, admin_password]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 100 }
+                email: { type: string, format: email }
+                admin_password: { type: string, minLength: 8 }
+                plan_id: { type: string, enum: [free, starter, pro, enterprise], default: free }
+                reseller_id: { type: string }
+                company: { type: string }
+                phone: { type: string }
+                industry: { type: string }
+                branding: { type: object, description: "Branding overrides" }
+      responses:
+        '201':
+          description: Client provisioned
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProvisionResult' }
+        '400': { description: Validation error }
+
+  /api/provisioning/deprovision/{client_id}:
+    post:
+      tags: [Provisioning]
+      summary: Suspend a client and all their users
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: client_id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Client suspended }
+
+  /api/provisioning/reprovision/{client_id}:
+    post:
+      tags: [Provisioning]
+      summary: Re-activate a suspended client
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: client_id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                plan_id: { type: string }
+      responses:
+        '200': { description: Client re-activated }
+
+  # ─── UI Routes ──────────────────────────────────────────
+  /dashboard:
+    get:
+      tags: [UI]
+      summary: Whitelabel admin dashboard
+      responses:
+        '200': { description: HTML dashboard }
+
+  /portal:
+    get:
+      tags: [UI]
+      summary: Client-facing portal
+      responses:
+        '200': { description: HTML portal }
+
+  /health:
+    get:
+      tags: [System]
+      summary: Health check
+      responses:
+        '200':
+          description: Health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  server: { type: string }
+                  version: { type: string }
