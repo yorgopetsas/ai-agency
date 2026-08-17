@@ -36,8 +36,9 @@ try:
     from agent_framework import BaseAgent, AgentRole, AgentFactory, TaskRouter
     from memory import AgentMemory, get_agent_memory
     from skill_runner import SkillRunner
-    from rag_pipeline import RAGPipeline, KnowledgeBaseManager, AgentsKBClient
+    from rag_pipeline import RAGPipeline, KnowledgeBaseManager, AgentsKBClient, get_client_rag
     from multi_client import IsolatedQuery, ClientManager, UsageTracker
+    from knowledge_manager import KnowledgeManager, get_client_knowledge
     from orchestration.router import TaskRouter as OrchestrationRouter
     from orchestration.supervisor import Supervisor
 except ImportError as e:
@@ -95,15 +96,16 @@ class AgencyIntegrator:
         # Agent Framework
         self.agents = AgentFactory.create_team(self.client_id)
 
-        # RAG Pipeline
-        self.rag = KnowledgeBaseManager()
+        # RAG Pipeline — client-scoped
+        self.rag = get_client_rag(self.client_id)
+        self.knowledge = get_client_knowledge(self.client_id)
         self.agentskb = AgentsKBClient()
 
         # Orchestration
         self.router = OrchestrationRouter()
         self.supervisor = Supervisor()
 
-        # Memory per agent
+        # Memory per agent — client-scoped
         self.memories: Dict[str, AgentMemory] = {}
 
         # Skills
@@ -113,10 +115,11 @@ class AgencyIntegrator:
         self.task_history: List[Dict] = []
 
     def _get_agent_memory(self, agent_name: str) -> AgentMemory:
-        """Get or create memory for an agent"""
+        """Get or create memory for an agent, scoped to this client"""
         if agent_name not in self.memories:
             self.memories[agent_name] = get_agent_memory(
-                agent_id=f"{self.client_id}_{agent_name}"
+                agent_id=agent_name,
+                client_id=self.client_id
             )
         return self.memories[agent_name]
 
@@ -239,7 +242,7 @@ class AgencyIntegrator:
 
     def search_knowledge(self, query: str, domain: Optional[str] = None) -> List[Dict]:
         """
-        Search all knowledge sources.
+        Search all knowledge sources for this client.
 
         Args:
             query: Search query

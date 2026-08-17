@@ -37,6 +37,7 @@ class ScheduledPost:
     error: str = ""
     retries: int = 0
     max_retries: int = 3
+    client_id: str = "internal"
     created_at: str = ""
 
     def __post_init__(self):
@@ -70,19 +71,19 @@ class SocialScheduler:
         logger.info(f"Scheduled post {post.id} for {scheduled_for}")
         return post.id
 
-    def get_due_posts(self) -> List[ScheduledPost]:
-        """Get posts that are due to be published."""
+    def get_due_posts(self, client_id: str = None) -> List[ScheduledPost]:
+        """Get posts that are due to be published, optionally filtered by client."""
         now = datetime.utcnow().isoformat()
         due = []
-        for post in self._load_all_posts():
+        for post in self._load_all_posts(client_id=client_id):
             if post.status == PostStatus.QUEUED and post.scheduled_for <= now:
                 due.append(post)
         return due
 
-    def get_pending_posts(self) -> List[ScheduledPost]:
-        """Get all pending/queued posts."""
+    def get_pending_posts(self, client_id: str = None) -> List[ScheduledPost]:
+        """Get all pending/queued posts, optionally filtered by client."""
         return [
-            p for p in self._load_all_posts()
+            p for p in self._load_all_posts(client_id=client_id)
             if p.status in (PostStatus.PENDING, PostStatus.QUEUED, PostStatus.RETRY)
         ]
 
@@ -129,9 +130,9 @@ class SocialScheduler:
             post.status = PostStatus.CANCELLED
             self._save_post(post)
 
-    def get_stats(self) -> Dict:
-        """Get scheduler statistics."""
-        posts = self._load_all_posts()
+    def get_stats(self, client_id: str = None) -> Dict:
+        """Get scheduler statistics, optionally filtered by client."""
+        posts = self._load_all_posts(client_id=client_id)
         return {
             "total": len(posts),
             "pending": sum(1 for p in posts if p.status == PostStatus.QUEUED),
@@ -141,9 +142,9 @@ class SocialScheduler:
             "by_platform": self._count_by_platform(posts),
         }
 
-    def get_history(self, limit: int = 50) -> List[Dict]:
-        """Get recent post history."""
-        posts = self._load_all_posts()
+    def get_history(self, limit: int = 50, client_id: str = None) -> List[Dict]:
+        """Get recent post history, optionally filtered by client."""
+        posts = self._load_all_posts(client_id=client_id)
         published = [p for p in posts if p.status == PostStatus.PUBLISHED]
         published.sort(key=lambda p: p.published_at or "", reverse=True)
         return [asdict(p) for p in published[:limit]]
@@ -163,8 +164,8 @@ class SocialScheduler:
             data = json.load(f)
         return ScheduledPost(**data)
 
-    def _load_all_posts(self) -> List[ScheduledPost]:
-        """Load all posts from disk."""
+    def _load_all_posts(self, client_id: str = None) -> List[ScheduledPost]:
+        """Load all posts from disk, optionally filtered by client."""
         posts = []
         if not os.path.exists(self.queue_dir):
             return posts
@@ -174,7 +175,10 @@ class SocialScheduler:
                 try:
                     with open(post_file) as f:
                         data = json.load(f)
-                    posts.append(ScheduledPost(**data))
+                    post = ScheduledPost(**data)
+                    if client_id and post.client_id != client_id:
+                        continue
+                    posts.append(post)
                 except Exception as e:
                     logger.warning(f"Failed to load post {fname}: {e}")
         return posts

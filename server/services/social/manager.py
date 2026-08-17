@@ -17,8 +17,9 @@ logger = logging.getLogger(__name__)
 class SocialMediaManager:
     """Orchestrates content generation, scheduling, and publishing."""
 
-    def __init__(self, data_dir: str = "data", llm_client=None):
+    def __init__(self, data_dir: str = "data", llm_client=None, client_id: str = "internal"):
         self.data_dir = data_dir
+        self.client_id = client_id
         self.content_gen = ContentGenerator(llm_client=llm_client)
         self.scheduler = SocialScheduler(data_dir=data_dir)
         self.publishers = {}
@@ -64,6 +65,7 @@ class SocialMediaManager:
                 title=post.title,
                 content=post.content,
                 url=post.url or plan.article_url,
+                client_id=self.client_id,
             )
 
             if delay_minutes > 0:
@@ -110,10 +112,10 @@ class SocialMediaManager:
 
         return result
 
-    def process_queue(self) -> List[Dict]:
-        """Process all due posts in the queue."""
+    def process_queue(self, client_id: str = None) -> List[Dict]:
+        """Process all due posts in the queue, optionally filtered by client."""
         results = []
-        due_posts = self.scheduler.get_due_posts()
+        due_posts = self.scheduler.get_due_posts(client_id=client_id or self.client_id)
 
         for post in due_posts:
             result = self.publish_now(post.id)
@@ -149,13 +151,13 @@ class SocialMediaManager:
             "plan_status": "published" if all(r.get("success") for r in results.values()) else "partial",
         }
 
-    def get_scheduler_stats(self) -> Dict:
-        """Get scheduler statistics."""
-        return self.scheduler.get_stats()
+    def get_scheduler_stats(self, client_id: str = None) -> Dict:
+        """Get scheduler statistics, optionally filtered by client."""
+        return self.scheduler.get_stats(client_id=client_id or self.client_id)
 
-    def get_post_history(self, limit: int = 50) -> List[Dict]:
-        """Get recent post history."""
-        return self.scheduler.get_history(limit)
+    def get_post_history(self, limit: int = 50, client_id: str = None) -> List[Dict]:
+        """Get recent post history, optionally filtered by client."""
+        return self.scheduler.get_history(limit, client_id=client_id or self.client_id)
 
     def cancel_scheduled(self, post_id: str) -> bool:
         """Cancel a scheduled post."""

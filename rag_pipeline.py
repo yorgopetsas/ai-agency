@@ -1,8 +1,10 @@
 """
 RAG Pipeline - Knowledge Base Management
 Phase 4: RAG + MCP Integration
+Phase 6: Data Isolation (client-scoped)
 
 Per-agent knowledge base with Chroma vector store.
+Each client gets isolated storage: knowledge/{client_id}/{agent_name}
 """
 
 import os
@@ -13,23 +15,28 @@ from chromadb.config import Settings
 # Base directory for knowledge
 KNOWLEDGE_BASE_DIR = "/Users/yorgopetsasedel/dev/opencode/ai_agency/knowledge"
 
+# Module-level cache of client→pipeline mappings
+_pipelines: Dict[str, Dict[str, 'RAGPipeline']] = {}
+
+
 class RAGPipeline:
     """
     Per-agent RAG pipeline using Chroma vector store.
-    Each agent has their own collection.
+    Each client+agent combination has its own isolated collection.
     """
-    
-    def __init__(self, agent_name: str):
+
+    def __init__(self, agent_name: str, client_id: str = "internal"):
         self.agent_name = agent_name.lower()
-        self.collection_name = f"knowledge_{self.agent_name}"
+        self.client_id = client_id
+        self.collection_name = f"knowledge_{self.client_id}_{self.agent_name}"
         self.client = chromadb.PersistentClient(
-            path=f"{KNOWLEDGE_BASE_DIR}/{self.agent_name}",
+            path=f"{KNOWLEDGE_BASE_DIR}/{self.client_id}/{self.agent_name}",
             settings=Settings(anonymized_telemetry=False)
         )
         self.collection = self.client.get_or_create_collection(
             name=self.collection_name
         )
-    
+
     def add_document(
         self,
         document_id: str,
@@ -39,13 +46,14 @@ class RAGPipeline:
         """Add a document to the knowledge base"""
         metadata = metadata or {}
         metadata['agent'] = self.agent_name
-        
+        metadata['client_id'] = self.client_id
+
         self.collection.add(
             documents=[content],
             ids=[document_id],
             metadatas=[metadata]
         )
-    
+
     def search(
         self,
         query: str,
@@ -58,7 +66,7 @@ class RAGPipeline:
             n_results=n_results,
             where=where
         )
-        
+
         documents = []
         for i, doc in enumerate(results['documents'][0]):
             documents.append({
@@ -67,21 +75,21 @@ class RAGPipeline:
                 'metadata': results['metadatas'][0][i] if results['metadatas'] else {},
                 'distance': results['distances'][0][i] if results['distances'] else None
             })
-        
+
         return documents
-    
+
     def delete_document(self, document_id: str):
         """Delete a document from knowledge base"""
         self.collection.delete(ids=[document_id])
-    
+
     def get_count(self) -> int:
         """Get number of documents in collection"""
         return self.count()
-    
+
     def count(self) -> int:
         """Get number of documents"""
         return self.collection.count()
-    
+
     def clear(self):
         """Clear all documents from collection"""
         self.client.delete_collection(name=self.collection_name)
@@ -92,26 +100,27 @@ class RAGPipeline:
 
 class KnowledgeBaseManager:
     """
-    Manages knowledge bases for all agents.
+    Manages knowledge bases for all agents, scoped per client.
     """
-    
-    def __init__(self):
+
+    def __init__(self, client_id: str = "internal"):
+        self.client_id = client_id
         self.agents = ['researcher', 'writer', 'developer', 'designer', 'analyst']
         self.pipelines: Dict[str, RAGPipeline] = {}
         self._init_pipelines()
-    
+
     def _init_pipelines(self):
         """Initialize pipelines for all agents"""
         for agent in self.agents:
-            self.pipelines[agent] = RAGPipeline(agent)
-    
+            self.pipelines[agent] = RAGPipeline(agent, client_id=self.client_id)
+
     def get_pipeline(self, agent_name: str) -> RAGPipeline:
         """Get pipeline for specific agent"""
         agent = agent_name.lower()
         if agent not in self.pipelines:
-            self.pipelines[agent] = RAGPipeline(agent)
+            self.pipelines[agent] = RAGPipeline(agent, client_id=self.client_id)
         return self.pipelines[agent]
-    
+
     def search_all(
         self,
         query: str,
@@ -122,7 +131,7 @@ class KnowledgeBaseManager:
         for agent, pipeline in self.pipelines.items():
             results[agent] = pipeline.search(query, n_results)
         return results
-    
+
     def add_to_agent(
         self,
         agent_name: str,
@@ -133,15 +142,20 @@ class KnowledgeBaseManager:
         """Add document to specific agent's knowledge base"""
         pipeline = self.get_pipeline(agent_name)
         pipeline.add_document(document_id, content, metadata)
-    
+
     def get_agent_knowledge_count(self, agent_name: str) -> int:
         """Get document count for an agent"""
         pipeline = self.get_pipeline(agent_name)
         return pipeline.get_count()
 
 
-# Default instance
-knowledge_manager = KnowledgeBaseManager()
+def get_client_rag(client_id: str = "internal") -> KnowledgeBaseManager:
+    """Get or create a client-scoped RAG pipeline manager (cached)."""
+    if client_id not in _pipelines:
+        _pipelines[client_id] = {}
+    return _pipelines[client_id].setdefault(
+        "rag", KnowledgeBaseManager(client_id=client_id)
+    )
 
 
 # AgentsKB API integration for DEVELOPER agent
@@ -209,9 +223,9 @@ agentskb_client = AgentsKBClient()
 
 
 if __name__ == "__main__":
-    # Test knowledge base
-    kb = knowledge_manager
-    
+    # Test client-scoped knowledge base
+    kb = get_client_rag("internal")
+
     # Add sample document to researcher
     kb.add_to_agent(
         'researcher',
@@ -219,7 +233,7 @@ if __name__ == "__main__":
         'Machine learning is a subset of artificial intelligence that enables systems to learn from data.',
         {'source': 'test', 'topic': 'AI'}
     )
-    
+
     # Search
     results = kb.search_all('What is machine learning?', n_results=2)
     for agent, docs in results.items():
