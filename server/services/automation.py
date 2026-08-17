@@ -12,6 +12,8 @@ import json
 import os
 import logging
 import feedparser
+import subprocess
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 from datetime import datetime
@@ -58,6 +60,7 @@ class AutomationService:
             "interval_hours": 6,
             "max_articles_per_run": 5,
             "auto_publish": True,
+            "auto_push_github": True,
             "feeds": [],
             "processed_urls_file": "server/data/processed_urls.json"
         }
@@ -186,6 +189,12 @@ class AutomationService:
             success_count = sum(1 for r in results if r.get("success"))
             published_count = sum(1 for r in results if r.get("published"))
 
+            # Step 5: Push to GitHub if any articles were published
+            github_push = None
+            if published_count > 0 and self.config.get("auto_push_github", True):
+                logger.info(f"Pushing {published_count} published articles to GitHub...")
+                github_push = self.push_to_github()
+
             return {
                 "success": True,
                 "new_articles_found": len(new_articles),
@@ -196,6 +205,7 @@ class AutomationService:
                 "min_rating": self.config.get("min_rating", 60),
                 "results": results,
                 "errors": [r for r in results if not r.get("success")],
+                "github_push": github_push,
                 "duration_seconds": (datetime.now() - start_time).total_seconds(),
                 "ran_at": start_time.isoformat()
             }
@@ -306,6 +316,31 @@ class AutomationService:
             "stage": "publish" if published else "pending"
         }
 
+    def push_to_github(self) -> Dict:
+        """
+        Build the static site and push to GitHub Pages.
+
+        Returns:
+            Dict with push result
+        """
+        try:
+            root = Path(__file__).parent.parent.parent
+            script = root / "scripts" / "publish_site.py"
+            result = subprocess.run(
+                [sys.executable, str(script)],
+                capture_output=True, text=True, timeout=120,
+                cwd=root
+            )
+            if result.returncode == 0:
+                logger.info("Successfully pushed to GitHub")
+                return {"success": True, "output": result.stdout}
+            else:
+                logger.error(f"GitHub push failed: {result.stderr}")
+                return {"success": False, "error": result.stderr}
+        except Exception as e:
+            logger.error(f"GitHub push error: {e}")
+            return {"success": False, "error": str(e)}
+
     def get_status(self) -> Dict:
         """Get automation status for display."""
         processed = self._load_processed_urls()
@@ -314,6 +349,7 @@ class AutomationService:
             "interval_hours": self.config.get("interval_hours", 6),
             "max_articles_per_run": self.config.get("max_articles_per_run", 5),
             "auto_publish": self.config.get("auto_publish", True),
+            "auto_push_github": self.config.get("auto_push_github", True),
             "min_rating": self.config.get("min_rating", 60),
             "image_rotation": self.publisher.image_service.providers,
             "feeds": self.config.get("feeds", []),
