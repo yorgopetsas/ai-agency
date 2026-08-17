@@ -101,6 +101,7 @@ skills:
   agency:
     - "ui-ux-design"
     - "scaffold-react-app"
+    - "create-component"
 
 # --------------------------------------------------------
 # RAG + MCP (Phase 4)
