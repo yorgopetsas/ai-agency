@@ -38,6 +38,7 @@ from server.routes.billing import billing_bp
 from server.routes.provisioning import provisioning_bp
 from server.routes.whitelabel import whitelabel_bp
 from server.routes.portal import portal_bp
+from server.routes.website_builder import website_builder_bp
 from server.services.automation import automation_service
 from server.scheduler import init_scheduler
 from auth.middleware import init_auth
@@ -116,6 +117,7 @@ app.register_blueprint(billing_bp)
 app.register_blueprint(provisioning_bp)
 app.register_blueprint(whitelabel_bp)
 app.register_blueprint(portal_bp)
+app.register_blueprint(website_builder_bp)
 app.register_blueprint(news_bp, url_prefix='/api')
 app.register_blueprint(workflow_bp, url_prefix='/api')
 app.register_blueprint(admin_bp, url_prefix='/api')

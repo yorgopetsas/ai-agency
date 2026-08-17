@@ -203,6 +203,27 @@ class ProvisioningEngine:
             logger.warning(f"Data dir init warning (non-fatal): {e}")
             result.steps_completed.append("data_dirs_created_with_warning")
 
+        # Step 6: Build client website
+        try:
+            from website_builder.engine import WebsiteBuilder
+            wb = WebsiteBuilder()
+            wb_result = wb.build(
+                client_id=client_id,
+                client_name=name,
+                industry=industry or "technology",
+                branding=branding_overrides or {},
+            )
+            if wb_result["success"]:
+                result.steps_completed.append("website_built")
+                logger.info(f"Built website for client {client_id}")
+            else:
+                result.steps_completed.append("website_build_skipped")
+                logger.warning(f"Website build skipped: {wb_result.get('error', 'unknown')}")
+        except Exception as e:
+            # Non-fatal — website can be built later
+            logger.warning(f"Website build warning (non-fatal): {e}")
+            result.steps_completed.append("website_build_skipped")
+
         result.success = True
         logger.info(f"Provisioning complete for client {client_id} ({name})")
         return result
