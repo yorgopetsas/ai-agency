@@ -102,6 +102,7 @@ skills:
     - "ui-ux-design"
     - "scaffold-react-app"
     - "create-component"
+    - "containerize-docker"
 
 # --------------------------------------------------------
 # RAG + MCP (Phase 4)

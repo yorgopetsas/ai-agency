@@ -140,6 +140,12 @@ CONFIGURED_SKILLS = {
         "category": "create-component",
         "skill": "create-component",
         "note": "Generates individual React components: hero, pricing, features, testimonials, CTA, forms, nav, footer"
+    },
+    "docker_containerizer": {
+        "library": "agency",
+        "category": "containerize-docker",
+        "skill": "containerize-docker",
+        "note": "Generates Dockerfiles, docker-compose.yml, and .dockerignore for React, Flask, or fullstack"
     }
 }
 
